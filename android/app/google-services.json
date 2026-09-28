@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "439499351375",
+    "project_id": "oriteam-ori",
+    "storage_bucket": "oriteam-ori.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:439499351375:android:0efb0900d4d84d2717113a",
+        "android_client_info": {
+          "package_name": "com.oriteam.ori"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBbq5MEQ0tA02pQ2_8SyP4ZXTJO5QQWMmk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
