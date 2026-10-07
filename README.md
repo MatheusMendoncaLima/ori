@@ -8,6 +8,16 @@
   Aplicativo de suporte assistivo e acessibilidade para pessoas neurodivergentes.
 </p>
 
+<p align="center"> <img src="https://img.shields.io/badge/Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white" alt="Kotlin"> <img src="https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android"> <img src="https://img.shields.io/badge/Jetpack%20Compose-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white" alt="Jetpack Compose"> <img src="https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" alt="Firebase"> <img src="https://img.shields.io/badge/Firestore-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" alt="Cloud Firestore"> <img src="https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white" alt="Git"> </p>
+
+<p align="center">
+  <img
+    src="https://github.com/user-attachments/assets/217a7725-cedc-4123-8d57-333c985d01bc"
+    alt="Tela inicial do ORI"
+    width="300"
+  >
+</p>
+
 ---
 
 ## Sobre o Projeto
