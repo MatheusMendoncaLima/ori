@@ -20,8 +20,6 @@ class RegisterViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(RegisterUiState())
     val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
-
-    // evento de "sucesso" pra Route navegar, sem acoplar o ViewModel ao NavController
     sealed interface Event {
         data object RegisterSuccess : Event
     }
@@ -46,8 +44,6 @@ class RegisterViewModel @Inject constructor(
 
     fun onRegisterClick() {
         val state = _uiState.value
-
-        // validações antes de chamar o Firebase
         if (state.nameInputValue.isBlank() || state.emailInputValue.isBlank() || state.passwordInputValue.isBlank()) {
             _uiState.update { it.copy(errorMessage = "Preencha todos os campos") }
             return

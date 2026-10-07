@@ -18,4 +18,13 @@ class AuthRepository @Inject constructor(
         user.updateProfile(profileUpdate).await()
         return user
     }
+
+    suspend fun login(email: String, password: String): FirebaseUser {
+        val result = firebaseAuth.signInWithEmailAndPassword(email, password).await()
+        return result.user ?: throw IllegalArgumentException("Usuário não encontrado")
+    }
+
+    suspend fun sendPasswordResetEmail(email: String) {
+        firebaseAuth.sendPasswordResetEmail(email).await()
+    }
 }
