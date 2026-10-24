@@ -82,17 +82,21 @@ import com.oriteam.ori.ui.theme.OriButtonCyan
 import com.oriteam.ori.ui.theme.OriCardBorder
 import com.oriteam.ori.ui.theme.OriDarkBlue
 import com.oriteam.ori.ui.theme.OriFieldPlaceholder
-import com.oriteam.ori.ui.theme.OriIndicatorInactive
 import com.oriteam.ori.ui.theme.OriSloganBlue
 import com.oriteam.ori.ui.theme.OriSubtleText
 
 @Composable
 fun LoginRoute(
+    isResponsavelMode: Boolean = false,
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit,
     viewModel: LoginViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(isResponsavelMode) {
+        viewModel.setResponsavelMode(isResponsavelMode)
+    }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -128,6 +132,7 @@ fun LoginScreen(
     focusManager: FocusManager = LocalFocusManager.current
 ) {
     val isUpper = state.isUppercase
+    val isResponsavel = state.isResponsavelMode
 
     Box(
         modifier = Modifier
@@ -196,85 +201,98 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Seção Saudação: "Olá!" + "Obrigado por voltar ao ori!"
+            // Seção Saudação: Titulo e Subtitulo dinâmicos
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.Start
             ) {
+                val titleText = if (isResponsavel) "Acesso do responsável" else "Olá!"
                 Text(
-                    text = "Olá!".toCased(isUpper),
+                    text = titleText.toCased(isUpper),
                     fontFamily = NunitoSansFontFamily,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 32.sp,
+                    fontSize = if (isResponsavel) 26.sp else 32.sp,
                     color = OriDarkBlue
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                val subtitleText = buildAnnotatedString {
-                    append("Obrigado por voltar ao ".toCased(isUpper))
-                    withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = OriDarkBlue)) {
-                        append("ori".toCased(isUpper))
+                if (isResponsavel) {
+                    Text(
+                        text = "Entre para gerenciar o perfil do usuário".toCased(isUpper),
+                        fontFamily = NunitoSansFontFamily,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 14.sp,
+                        color = OriSloganBlue
+                    )
+                } else {
+                    val subtitleText = buildAnnotatedString {
+                        append("Obrigado por voltar ao ".toCased(isUpper))
+                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = OriDarkBlue)) {
+                            append("ori".toCased(isUpper))
+                        }
+                        append("!".toCased(isUpper))
                     }
-                    append("!".toCased(isUpper))
-                }
 
-                Text(
-                    text = subtitleText,
-                    fontFamily = NunitoSansFontFamily,
-                    fontWeight = FontWeight.Normal,
-                    fontSize = 14.sp,
-                    color = OriSloganBlue
-                )
+                    Text(
+                        text = subtitleText,
+                        fontFamily = NunitoSansFontFamily,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 14.sp,
+                        color = OriSloganBlue
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Balão de Boas-Vindas com ícone de Mão Acenando
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = BorderStroke(1.dp, OriCardBorder),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            // Balão de Boas-Vindas com ícone de Mão Acenando (Oculto no modo responsável)
+            if (!isResponsavel) {
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    border = BorderStroke(1.dp, OriCardBorder),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.mao_acenando),
-                        contentDescription = "Mão acenando",
-                        modifier = Modifier.size(44.dp)
-                    )
-
-                    Spacer(modifier = Modifier.width(14.dp))
-
-                    Column {
-                        Text(
-                            text = "Bem-vindo(a)!".toCased(isUpper),
-                            fontFamily = NunitoSansFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 17.sp,
-                            color = OriDarkBlue
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.mao_acenando),
+                            contentDescription = "Mão acenando",
+                            modifier = Modifier.size(44.dp)
                         )
 
-                        Spacer(modifier = Modifier.height(2.dp))
+                        Spacer(modifier = Modifier.width(14.dp))
 
-                        Text(
-                            text = "Acesse sua conta para continuar".toCased(isUpper),
-                            fontFamily = NunitoSansFontFamily,
-                            fontWeight = FontWeight.Normal,
-                            fontSize = 13.sp,
-                            color = OriSloganBlue
-                        )
+                        Column {
+                            Text(
+                                text = "Bem-vindo(a)!".toCased(isUpper),
+                                fontFamily = NunitoSansFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 17.sp,
+                                color = OriDarkBlue
+                            )
+
+                            Spacer(modifier = Modifier.height(2.dp))
+
+                            Text(
+                                text = "Acesse sua conta para continuar".toCased(isUpper),
+                                fontFamily = NunitoSansFontFamily,
+                                fontWeight = FontWeight.Normal,
+                                fontSize = 13.sp,
+                                color = OriSloganBlue
+                            )
+                        }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(24.dp))
+            }
 
             // Campo de Entrada: E-mail
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -287,10 +305,12 @@ fun LoginScreen(
                     modifier = Modifier.padding(bottom = 6.dp)
                 )
 
+                val emailPlaceholder = if (isResponsavel) "responsavel@email.com" else "seu@email.com"
+
                 CustomInputField(
                     value = state.emailInputValue,
                     onValueChange = onEmailInputChange,
-                    placeholder = "seu@email.com".toCased(isUpper),
+                    placeholder = emailPlaceholder.toCased(isUpper),
                     isUppercase = isUpper,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Email,

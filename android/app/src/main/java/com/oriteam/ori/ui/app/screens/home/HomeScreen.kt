@@ -1,11 +1,12 @@
-
 package com.oriteam.ori.ui.app.screens.home
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -25,13 +26,18 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
@@ -45,14 +51,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.oriteam.ori.OriPreview
 import com.oriteam.ori.R
 import com.oriteam.ori.ui.app.screens.login.LoginRoute
+import com.oriteam.ori.ui.app.screens.register.RegisterRoute
 import com.oriteam.ori.ui.theme.NunitoFontFamily
 import com.oriteam.ori.ui.theme.NunitoSansFontFamily
 import com.oriteam.ori.ui.theme.OriBackground
+import com.oriteam.ori.ui.theme.OriButtonCyan
 import com.oriteam.ori.ui.theme.OriDarkBlue
 import com.oriteam.ori.ui.theme.OriDecorationArcThick
 import com.oriteam.ori.ui.theme.OriDecorationArcThin
 import com.oriteam.ori.ui.theme.OriIndicatorInactive
 import com.oriteam.ori.ui.theme.OriSloganBlue
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val ONBOARDING_PAGE = 0
@@ -63,13 +72,17 @@ private const val PAGE_COUNT = 3
 @Composable
 fun HomeRoute(
     viewModel: HomeViewModel = hiltViewModel(),
-    onNavigateToRegister: () -> Unit
+    onNavigateToRegister: () -> Unit = {},
+    onContinueWithoutAccount: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     HomeScreen(
         state = state,
-        onNavigateToRegister = onNavigateToRegister
+        onSelectResponsavelMode = viewModel::onSelectResponsavelMode,
+        onTimerFinished = viewModel::onTimerFinished,
+        onNavigateToRegister = onNavigateToRegister,
+        onContinueWithoutAccount = onContinueWithoutAccount
     )
 }
 
@@ -77,7 +90,10 @@ fun HomeRoute(
 @Composable
 fun HomeScreen(
     state: HomeUiState = HomeUiState(),
-    onNavigateToRegister: () -> Unit = {}
+    onSelectResponsavelMode: (Boolean) -> Unit = {},
+    onTimerFinished: () -> Unit = {},
+    onNavigateToRegister: () -> Unit = {},
+    onContinueWithoutAccount: () -> Unit = {}
 ) {
     val pagerState = rememberPagerState(
         initialPage = ONBOARDING_PAGE
@@ -96,29 +112,54 @@ fun HomeScreen(
             state = pagerState,
             modifier = Modifier.fillMaxSize()
         ) { page ->
-
             when (page) {
                 ONBOARDING_PAGE -> {
-                    OnboardingHomePage()
+                    OnboardingHomePage(
+                        showOptions = state.showOptions,
+                        onTimerFinished = onTimerFinished,
+                        onSelectResponsavel = {
+                            onSelectResponsavelMode(true)
+                            scope.launch {
+                                pagerState.animateScrollToPage(REGISTER_PAGE)
+                            }
+                        },
+                        onSelectUsuario = {
+                            onSelectResponsavelMode(false)
+                            scope.launch {
+                                pagerState.animateScrollToPage(REGISTER_PAGE)
+                            }
+                        },
+                        onContinueWithoutAccount = onContinueWithoutAccount
+                    )
                 }
 
                 LOGIN_PAGE -> {
                     LoginRoute(
+                        isResponsavelMode = state.isResponsavelSelected,
                         onLoginSuccess = {
                         },
                         onNavigateToRegister = {
                             scope.launch {
                                 pagerState.animateScrollToPage(REGISTER_PAGE)
                             }
-
                             onNavigateToRegister()
                         }
                     )
                 }
 
                 REGISTER_PAGE -> {
-                    PlaceholderPage(
-                        pageIndex = page
+                    RegisterRoute(
+                        isResponsavelMode = state.isResponsavelSelected,
+                        onRegisterSuccess = {
+                            scope.launch {
+                                pagerState.animateScrollToPage(LOGIN_PAGE)
+                            }
+                        },
+                        onNavigateToLogin = {
+                            scope.launch {
+                                pagerState.animateScrollToPage(LOGIN_PAGE)
+                            }
+                        }
                     )
                 }
             }
@@ -134,8 +175,22 @@ fun HomeScreen(
         )
     }
 }
+
 @Composable
-private fun OnboardingHomePage() {
+private fun OnboardingHomePage(
+    showOptions: Boolean,
+    onTimerFinished: () -> Unit,
+    onSelectResponsavel: () -> Unit,
+    onSelectUsuario: () -> Unit,
+    onContinueWithoutAccount: () -> Unit
+) {
+    LaunchedEffect(Unit) {
+        if (!showOptions) {
+            delay(5000L)
+            onTimerFinished()
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -151,7 +206,6 @@ private fun OnboardingHomePage() {
                     width * 0.51f,
                     height
                 )
-
                 quadraticTo(
                     width * 0.74f,
                     height * 0.84f,
@@ -172,7 +226,6 @@ private fun OnboardingHomePage() {
                     width * 0.60f,
                     height + 20.dp.toPx()
                 )
-
                 quadraticTo(
                     width * 0.80f,
                     height * 0.87f,
@@ -242,40 +295,87 @@ private fun OnboardingHomePage() {
                 )
             }
 
-            Text(
-                text = "Seu Apoio. Sempre.",
-                fontFamily = NunitoSansFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 21.sp,
-                color = OriDarkBlue,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(
-                    bottom = 20.dp
-                )
-            )
+            Crossfade(
+                targetState = showOptions,
+                animationSpec = tween(durationMillis = 500),
+                label = "OnboardingBottomOptions"
+            ) { isShowOptions ->
+                if (!isShowOptions) {
+                    Text(
+                        text = "Seu Apoio. Sempre.",
+                        fontFamily = NunitoSansFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 21.sp,
+                        color = OriDarkBlue,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(bottom = 20.dp)
+                    )
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = onSelectResponsavel,
+                            shape = CircleShape,
+                            colors = ButtonDefaults.buttonColors(containerColor = OriButtonCyan),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                        ) {
+                            Text(
+                                text = "Registrar responsável",
+                                fontFamily = NunitoSansFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = Color.White
+                            )
+                        }
+
+                        Button(
+                            onClick = onSelectUsuario,
+                            shape = CircleShape,
+                            colors = ButtonDefaults.buttonColors(containerColor = OriButtonCyan),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                        ) {
+                            Text(
+                                text = "Registrar usuário",
+                                fontFamily = NunitoSansFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = Color.White
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = onContinueWithoutAccount,
+                            shape = CircleShape,
+                            border = BorderStroke(1.5.dp, OriButtonCyan),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = OriButtonCyan),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                        ) {
+                            Text(
+                                text = "Continuar sem conta",
+                                fontFamily = NunitoSansFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = OriButtonCyan
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
-@Composable
-private fun PlaceholderPage(
-    pageIndex: Int
-) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Tela $pageIndex - Registro",
-            fontFamily = NunitoSansFontFamily,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 18.sp,
-            color = OriDarkBlue,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(24.dp)
-        )
-    }
-}
 @Composable
 fun AnimatedPagerIndicator(
     pagerState: PagerState,
@@ -288,9 +388,7 @@ fun AnimatedPagerIndicator(
         verticalAlignment = Alignment.CenterVertically
     ) {
         repeat(pageCount) { iteration ->
-
-            val isSelected =
-                pagerState.currentPage == iteration
+            val isSelected = pagerState.currentPage == iteration
 
             val animatedColor by animateColorAsState(
                 targetValue = if (isSelected) {

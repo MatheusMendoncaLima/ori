@@ -29,6 +29,10 @@ class LoginViewModel @Inject constructor(
     private val _events = Channel<Event>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
+    fun setResponsavelMode(isResponsavel: Boolean) {
+        _uiState.update { it.copy(isResponsavelMode = isResponsavel) }
+    }
+
     fun onEmailInputChange(value: String) {
         _uiState.update { it.copy(emailInputValue = value, errorMessage = null) }
     }

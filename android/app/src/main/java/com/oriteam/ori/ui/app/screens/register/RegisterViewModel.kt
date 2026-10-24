@@ -20,11 +20,18 @@ class RegisterViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(RegisterUiState())
     val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
+
     sealed interface Event {
         data object RegisterSuccess : Event
+        data object NavigateToLogin : Event
     }
+
     private val _events = Channel<Event>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
+
+    fun setResponsavelMode(isResponsavel: Boolean) {
+        _uiState.update { it.copy(isResponsavel = isResponsavel) }
+    }
 
     fun onNameInputChange(value: String) {
         _uiState.update { it.copy(nameInputValue = value, errorMessage = null) }
@@ -40,6 +47,28 @@ class RegisterViewModel @Inject constructor(
 
     fun onConfirmPasswordInputChange(value: String) {
         _uiState.update { it.copy(confirmPasswordInputValue = value, errorMessage = null) }
+    }
+
+    fun onTogglePasswordVisibility() {
+        _uiState.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
+    }
+
+    fun onToggleConfirmPasswordVisibility() {
+        _uiState.update { it.copy(isConfirmPasswordVisible = !it.isConfirmPasswordVisible) }
+    }
+
+    fun onToggleResponsavel(isResponsavel: Boolean) {
+        _uiState.update { it.copy(isResponsavel = isResponsavel) }
+    }
+
+    fun onToggleUppercase() {
+        _uiState.update { it.copy(isUppercase = !it.isUppercase) }
+    }
+
+    fun onNavigateToLoginClick() {
+        viewModelScope.launch {
+            _events.send(Event.NavigateToLogin)
+        }
     }
 
     fun onRegisterClick() {
