@@ -75,6 +75,8 @@ sequenceDiagram
 | Prancha de mesmo nome é unida; só entram os símbolos que faltam | Evita "Básico" repetido |
 | Pranchas lidas só do cache esperam | O cache poderia esconder pranchas da conta e criar duplicatas |
 | Item além dos limites da conta (por exemplo, 30 pranchas) fica no aparelho, e o Perfil avisa | Melhor avisar do que perder |
+| Uma atividade repetida que não cabe (a conta já tem 50) fica no aparelho junto com os dias marcados nela, e o resto continua indo | Os dias sozinhos apareceriam na conta como atividades soltas |
+| Uma atividade repetida que a conta já recebeu numa tentativa anterior é atualizada, não criada de novo | As regras recusam uma segunda criação, porque ela mudaria quem criou e quando |
 
 **Em caso de erro:** o Perfil mostra "vão para a conta quando a conexão voltar" com **Tentar de novo**. A tentativa também é refeita ao abrir o app.
 

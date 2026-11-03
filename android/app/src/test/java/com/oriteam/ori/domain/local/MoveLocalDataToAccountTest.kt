@@ -106,6 +106,41 @@ class MoveLocalDataToAccountTest {
     }
 
     @Test
+    fun `repeating activities over the limit of the account stay here with their days, and the rest moves`() =
+        runTest {
+            val series = RoutineSeries(
+                id = "s1",
+                ownerUid = LOCAL_OWNER_UID,
+                title = "Terapia",
+                startDate = day,
+                scheduledTime = null,
+                description = null,
+                status = TaskStatus.ACTIVE,
+                ownerCanComplete = true,
+                createdBy = LOCAL_OWNER_UID,
+                rule = RepeatRule.EveryDay
+            )
+            val doneDay = task(occurrenceIdOf("s1", day), isDone = true)
+            val store = FakeLocalDataStore(
+                LocalDataSnapshot(
+                    tasks = listOf(doneDay, task("t1")),
+                    series = listOf(series),
+                    savedMessages = listOf(SavedMessage("m1", "Oi"))
+                )
+            )
+            routine.seriesResult = DataResult.Failure(DataError.PRECONDITION_FAILED)
+            messages.messages.value = DataResult.Success(emptyList())
+
+            assertEquals(LocalDataMoveResult.SOME_ITEMS_DID_NOT_FIT, move(store)("account"))
+
+            // The series and the day marked in it wait together for room in the account.
+            assertEquals(listOf(series), store.data.series)
+            assertEquals(listOf(doneDay), store.data.tasks)
+            assertEquals(listOf("t1"), routine.writes.map { it.activityId })
+            assertTrue(store.data.savedMessages.isEmpty())
+        }
+
+    @Test
     fun `a photo goes to the account before its symbol, and waits with it`() = runTest {
         val picture = SymbolImage.DevicePhoto("a.jpg")
         val local = LocalBoard(

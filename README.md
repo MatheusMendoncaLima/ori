@@ -98,26 +98,29 @@ A estrutura de permissões e vínculos entre usuários é tratada separadamente 
 
 | Funcionalidade | Situação |
 |---|---|
-| Abertura com escolha entre responsável e usuário | Implementado, sem testes automatizados |
+| Abertura com entrar, criar conta ou continuar sem conta | Implementado e parcialmente testado |
 | Cadastro com e-mail e senha | Implementado e parcialmente testado |
 | Login com e-mail e senha | Implementado e parcialmente testado |
 | Sessão restaurada ao abrir o app e saída da conta | Implementado e parcialmente testado |
-| Perfil com nome (uma só conta; o vínculo decide quem acompanha quem) | Implementado e parcialmente testado |
+| Perfil com nome e foto (uma só conta; o vínculo decide quem acompanha quem) | Implementado e parcialmente testado; ver [docs/funcionalidades/perfil-e-conta.md](docs/funcionalidades/perfil-e-conta.md) |
 | Regras de autorização no Firestore | Implementado, testado no emulador e publicado |
 | Convites no servidor (Cloud Functions) | Implementado e testado no emulador; **ainda não publicado** (exige plano Blaze) |
-| Rotina: consulta por dia, detalhes, criar, editar, excluir e concluir | Implementado e parcialmente testado (sem verificação em aparelho); ver [docs/funcionalidades/rotina.md](docs/funcionalidades/rotina.md) |
+| Rotina: consulta por dia, detalhes, criar, editar, excluir, concluir e atividades que se repetem | Implementado e parcialmente testado (sem verificação em aparelho); ver [docs/funcionalidades/rotina.md](docs/funcionalidades/rotina.md) |
+| Relatórios da semana e do mês | Implementado e parcialmente testado (sem teste do ViewModel); ver [docs/funcionalidades/relatorios.md](docs/funcionalidades/relatorios.md) |
 | Vínculos: convite, permissões e encerramento | Implementado e parcialmente testado |
 | Recuperação de senha por e-mail | Implementado e parcialmente testado |
 | Exibição em letras maiúsculas ("Aa") | Implementado e parcialmente testado (salvo no aparelho) |
 | Preferências: texto, tema, simplificação, animações, espaçamento, listas e tela inicial | Implementado e parcialmente testado; ver [docs/funcionalidades/preferencias.md](docs/funcionalidades/preferencias.md) |
 | Layout adaptativo das telas de abertura, login e cadastro | Implementado e parcialmente testado (sem verificação em aparelho) |
 | Comunicação (CAA): pranchas, símbolos, fotos, frases associadas, montagem, voz, frases salvas, preferências e organização pelo responsável | Implementado e parcialmente testado (sem verificação em aparelho nem da voz real); ver [docs/funcionalidades/caa.md](docs/funcionalidades/caa.md) |
-| Continuar sem conta | Não implementado |
+| Continuar sem conta e levar os dados para uma conta depois | Implementado e parcialmente testado; ver [docs/funcionalidades/uso-local.md](docs/funcionalidades/uso-local.md) |
 | Aplicação web | Não implementado (template do Next.js) |
 
 **Uso sem conta e offline:** o app funciona sem login e sem internet; ao criar uma conta, os dados vão para ela. Veja [uso sem conta](docs/funcionalidades/uso-local.md).
 
 Detalhes: [autenticação](docs/funcionalidades/autenticacao.md) e [perfis e permissões](docs/funcionalidades/perfis-e-permissoes.md).
+
+Falhas conhecidas e ainda não corrigidas, com a correção sugerida: [docs/revisao-de-codigo.md](docs/revisao-de-codigo.md).
 
 ---
 

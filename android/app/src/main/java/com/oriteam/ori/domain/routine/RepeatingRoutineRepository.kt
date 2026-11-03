@@ -84,13 +84,16 @@ class RepeatingRoutineRepository(
         viewer: RoutineViewer
     ): DataResult<WriteStatus> {
         val rule = draft.repeat ?: return tasks.createActivity(ownerUid, activityId, draft)
-        return when (val current = series.getSeries(ownerUid, viewer)) {
-            is DataResult.Failure -> current
-            is DataResult.Success -> if (current.value.size >= MAX_ROUTINE_SERIES) {
-                DataResult.Failure(DataError.PRECONDITION_FAILED)
-            } else {
-                series.createSeries(ownerUid, activityId, draft, rule)
-            }
+        val current = when (val read = series.getSeries(ownerUid, viewer)) {
+            is DataResult.Failure -> return read
+            is DataResult.Success -> read.value
+        }
+        // Saving again one that is already there (a repeated attempt, same id) updates it: it adds nothing,
+        // and the rules refuse a second creation, because it would change who created it and when.
+        return when {
+            current.any { it.id == activityId } -> series.updateSeries(ownerUid, activityId, draft, rule)
+            current.size >= MAX_ROUTINE_SERIES -> DataResult.Failure(DataError.PRECONDITION_FAILED)
+            else -> series.createSeries(ownerUid, activityId, draft, rule)
         }
     }
 

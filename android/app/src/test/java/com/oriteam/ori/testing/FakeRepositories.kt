@@ -19,6 +19,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.onStart
 import java.time.LocalDate
 
@@ -52,12 +53,18 @@ data class RoutineWrite(val operation: String, val ownerUid: String, val activit
 class FakeRoutineRepository : RoutineRepository {
     /** What observers of any day receive. */
     val routine = MutableStateFlow<DataResult<RoutineSnapshot>?>(null)
+
+    /** When a day is here, it answers with its own activities instead of [routine]. */
+    var routineByDay: Map<LocalDate, DataResult<RoutineSnapshot>> = emptyMap()
     val observedDays = mutableListOf<LocalDate>()
 
     /** Answer of the one-time day read used for duplicate detection. */
     var dayResult: DataResult<List<RoutineTask>> = DataResult.Success(emptyList())
     var writeResult: DataResult<WriteStatus> = DataResult.Success(WriteStatus.SYNCED)
     var setDoneResult: DataResult<WriteStatus> = DataResult.Success(WriteStatus.SYNCED)
+
+    /** When set, what creating a repeating activity answers instead of [writeResult] (a full account, say). */
+    var seriesResult: DataResult<WriteStatus>? = null
     val writes = mutableListOf<RoutineWrite>()
 
     /** When set, writes wait for it: simulates a slow network. */
@@ -69,9 +76,25 @@ class FakeRoutineRepository : RoutineRepository {
         ownerUid: String,
         viewer: RoutineViewer,
         date: LocalDate
-    ): Flow<DataResult<RoutineSnapshot>> = routine.filterNotNull().onStart { observedDays += date }
+    ): Flow<DataResult<RoutineSnapshot>> =
+        (routineByDay[date]?.let { flowOf(it) } ?: routine.filterNotNull()).onStart { observedDays += date }
 
     override suspend fun getDay(ownerUid: String, viewer: RoutineViewer, date: LocalDate) = dayResult
+
+    /** The days of each period read: one entry is one read, as one range query in Firestore. */
+    val periodReads = mutableListOf<List<LocalDate>>()
+
+    override suspend fun getDays(
+        ownerUid: String,
+        viewer: RoutineViewer,
+        dates: List<LocalDate>
+    ): DataResult<Map<LocalDate, List<RoutineTask>>> {
+        periodReads += dates
+        return when (val day = dayResult) {
+            is DataResult.Failure -> day
+            is DataResult.Success -> DataResult.Success(dates.associateWith { day.value })
+        }
+    }
 
     override fun newActivityId(ownerUid: String): String = "reserved-${++reservedIds}"
 
@@ -80,7 +103,7 @@ class FakeRoutineRepository : RoutineRepository {
         activityId: String,
         draft: ActivityDraft,
         viewer: RoutineViewer
-    ) = record(RoutineWrite("create", ownerUid, activityId, draft))
+    ) = draft.repeat?.let { seriesResult } ?: record(RoutineWrite("create", ownerUid, activityId, draft))
 
     override suspend fun updateActivity(
         ownerUid: String,

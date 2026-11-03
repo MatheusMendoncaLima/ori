@@ -925,6 +925,21 @@ describe("routine activities: create, edit, delete and query by date", () => {
     await assertFails(getDocs(query(tasks, ...range)));
   });
 
+  it("a caregiver reads a period only with the active filter (marks of the month)", async () => {
+    const tasks = collection(dbAs(CAREGIVER), `users/${PRIMARY}/routineTasks`);
+    const range = [
+      where("date", ">=", "2026-10-01"),
+      where("date", "<=", "2026-10-31"),
+      orderBy("date"),
+      limit(100),
+    ];
+    await assertSucceeds(
+      getDocs(query(tasks, where("status", "==", "active"), ...range)),
+    );
+    // Without the status filter the period could include hidden activities.
+    await assertFails(getDocs(query(tasks, ...range)));
+  });
+
   it("a query by date returns only that day", async () => {
     await env.withSecurityRulesDisabled(async (context) => {
       await setDoc(

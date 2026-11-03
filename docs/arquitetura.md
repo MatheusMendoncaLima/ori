@@ -62,9 +62,9 @@ testadas com JUnit puro, sem emulador.
 | `domain/profile`, `domain/routine`, `domain/aac`, `domain/carelink`, `domain/preferences` | Modelos e contratos de perfil, rotina, comunicação (pranchas, mensagem, voz), vínculos e convites (com `CareLinkSide`, o lado do vínculo que cada tela mostra), e preferências de exibição e de comunicação |
 | `domain/photos` | Fotos escolhidas pela pessoa, para símbolos e para o perfil: `PhotoStore`, `StoredPhoto`, erros de importação e `CloudPhotoRepository` (a cópia na conta) |
 | `domain/common` | `DataResult` e `DataError`, usados por todos os repositórios de dados, e `AppLocale`, o idioma do app num lugar só |
-| `domain/model` | `TaskStatus` |
+| `domain/model` | `TaskStatus` (deveria estar em `domain/routine`: ver G1 em [revisao-de-codigo.md](revisao-de-codigo.md)) |
 | `domain/local` | `LocalDataStore` e `MoveLocalDataToAccount`: dados sem conta e a passagem deles para a conta |
-| `domain/reports` | Cálculo dos relatórios |
+| `domain/reports` | Cálculo dos relatórios ([funcionalidades/relatorios.md](funcionalidades/relatorios.md)) |
 | `data/local` | Banco Room, repositórios locais e `Routed*Repository`, que escolhem entre aparelho e conta pelo dono dos dados |
 | `data/auth` | `FirebaseAuthRepository`, a única classe que conhece o Firebase Auth |
 | `data/firestore` | Nomes de coleções e campos (`FirestoreSchema`), conversão documento ↔ modelo e mapeamento de erros |
@@ -75,7 +75,9 @@ testadas com JUnit puro, sem emulador.
 | `ui/app/screens/<feature>` | Uma pasta por tela: `XScreen.kt` (Route + Screen), `XViewModel.kt`, `XUiState.kt` |
 | `ui/app/screens/auth` | Conversão de erros em textos (`@StringRes`) e `AuthFormScaffold` comum a login e cadastro |
 | `ui/app/screens/routine`, `ui/app/screens/aac` | Telas e componentes da rotina e da comunicação (CAA); ver [funcionalidades/rotina.md](funcionalidades/rotina.md) e [funcionalidades/caa.md](funcionalidades/caa.md) |
-| `ui/components/<categoria>` | Componentes visuais reutilizáveis, sem regra de negócio: `text`, `form`, `navigation`, `card`, `list`, `dialog`, `state`, `settings`, `brand` |
+| `ui/app/screens/account`, `carelinks`, `carerecipients`, `preferences` | Perfil, foto, vínculos, convites, pessoas acompanhadas e configurações; ver [funcionalidades/perfil-e-conta.md](funcionalidades/perfil-e-conta.md) |
+| `ui/app/screens/today`, `reports` | Início e Relatórios; ver [funcionalidades/relatorios.md](funcionalidades/relatorios.md) |
+| `ui/components/<categoria>` | Componentes visuais reutilizáveis, sem regra de negócio: `text`, `form`, `navigation`, `card`, `list`, `dialog`, `state`, `settings`, `brand`, `icon`, `photo` |
 | `ui/adaptive` | `WindowLayout` (regras de layout por tamanho de janela), lista e detalhe e contêineres responsivos |
 | `ui/theme` | Tokens: cores dos temas claro e escuro, tipografia, espaçamento, formas, `OriMotion`, `OriAppearance` e `OriTheme`, que aplica as preferências |
 | `ui/preview` | Anotações `@OriPreview` e `@OriPreviewDark` |
@@ -147,7 +149,7 @@ A raiz do app é o `OriApp`, que mostra uma área diferente para cada `SessionSt
 
 - **Deslogado:** pager da Home, descrito abaixo.
 - **Sem perfil:** "Complete seu perfil".
-- **Ativo (com ou sem conta):** `MainScaffold` com navegação adaptativa e quatro áreas iguais para todos: Início, Rotina, Comunicar e Perfil. Tarefas, Mídia e Relatórios abrem a partir do Início; Configurações, Responsáveis e Acompanhados, a partir do Perfil.
+- **Ativo (com ou sem conta):** `MainScaffold` com navegação adaptativa e quatro áreas iguais para todos: Início, Rotina, Comunicar e Perfil. Tarefas e Relatórios abrem a partir do Início; Dados pessoais, Responsáveis, Acompanhados e Configurações, a partir do Perfil. Cada área abre suas subtelas com `rememberOpenSubscreen`: uma de cada vez, guardada se o app for fechado em segundo plano e fechada pelo "voltar" do sistema.
 
 Detalhes em [funcionalidades/perfis-e-permissoes.md](funcionalidades/perfis-e-permissoes.md).
 Leituras, escritas, comportamento offline e ambientes estão em [dados.md](dados.md).
@@ -177,7 +179,7 @@ troca a área inteira.
 | `android/` | `./gradlew detekt -PdetektAutoCorrect` | Corrige a formatação automaticamente |
 | `android/` | `./gradlew testDevDebugUnitTest` | Testes de domínio, ViewModels e testes de UI Compose na JVM (Robolectric) |
 | `android/` | `./gradlew lintProdDebug` | Android Lint |
-| `android/` | `./gradlew assembleProdDebug` | Build do APK |
+| `android/` | `./gradlew assembleDevDebug assembleProdDebug` | Build dos APKs (`dev` usa o emulador do Firebase; `prod`, o projeto real) |
 | `web/` | `npm run format:check`, `npm run lint`, `npm run build` | Prettier, ESLint, build |
 | `functions/functions/` | `npm run lint`, `npm run build` | ESLint (estilo Google), TypeScript |
 | `functions/security-tests/` | `npm run format:check`, `npm test` | Prettier; regras do Firestore e Cloud Functions no emulador (precisa de Java) |
@@ -198,5 +200,6 @@ em cada pull request e em cada push na `main`.
 ## Limitações conhecidas
 
 - As Cloud Functions de convite ainda **não foram publicadas**; as regras do Firestore já foram.
+- Falhas e gambiarras conhecidas, com a correção sugerida: [revisao-de-codigo.md](revisao-de-codigo.md).
 - O modo escuro não está implementado (ver [design-system.md](design-system.md)).
 - A espera de 5 segundos na abertura não pode ser pulada.

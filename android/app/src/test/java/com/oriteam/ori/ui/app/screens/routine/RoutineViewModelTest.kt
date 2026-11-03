@@ -73,6 +73,43 @@ class RoutineViewModelTest {
     }
 
     @Test
+    fun `choosing another day of the open month does not read the month again`() = runTest {
+        routines.routineByDay = mapOf(
+            DAY to snapshotOf(activity("a")),
+            DAY.plusDays(1) to snapshotOf(activity("b", date = DAY.plusDays(1))),
+            DAY.minusDays(1) to snapshotOf()
+        )
+        val viewModel = routineViewModel()
+        viewModel.onMonthShown(YearMonth.from(DAY))
+        advanceUntilIdle()
+
+        viewModel.onSelectDate(DAY.plusDays(1))
+        advanceUntilIdle()
+        viewModel.onSelectDate(DAY.minusDays(1))
+        advanceUntilIdle()
+        assertEquals(1, routines.periodReads.size)
+
+        // Another month is another read.
+        viewModel.onMonthShown(YearMonth.from(DAY).plusMonths(1))
+        advanceUntilIdle()
+        assertEquals(2, routines.periodReads.size)
+    }
+
+    @Test
+    fun `an activity added to the chosen day reads the open month again`() = runTest {
+        routines.routine.value = snapshotOf(activity("a"))
+        val viewModel = routineViewModel()
+        viewModel.onMonthShown(YearMonth.from(DAY))
+        advanceUntilIdle()
+
+        // A repeating one may fall on other days of the month too, so the whole month is read.
+        routines.routine.value = snapshotOf(activity("a"), activity("b"))
+        advanceUntilIdle()
+
+        assertEquals(2, routines.periodReads.size)
+    }
+
+    @Test
     fun `opens on today and queries one day at a time`() = runTest {
         val viewModel = routineViewModel()
 

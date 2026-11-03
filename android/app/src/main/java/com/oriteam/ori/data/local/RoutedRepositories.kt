@@ -9,9 +9,11 @@ import com.oriteam.ori.domain.aac.SavedMessageRepository
 import com.oriteam.ori.domain.aac.SymbolDraft
 import com.oriteam.ori.domain.profile.LOCAL_OWNER_UID
 import com.oriteam.ori.domain.routine.ActivityDraft
+import com.oriteam.ori.domain.routine.DeleteScope
 import com.oriteam.ori.domain.routine.RepeatRule
 import com.oriteam.ori.domain.routine.RoutineRepository
 import com.oriteam.ori.domain.routine.RoutineSeriesRepository
+import com.oriteam.ori.domain.routine.RoutineTask
 import com.oriteam.ori.domain.routine.RoutineViewer
 import java.time.LocalDate
 import javax.inject.Inject
@@ -22,10 +24,14 @@ import javax.inject.Inject
  * works the same with and without an account.
  */
 
-class RoutedRoutineRepository @Inject constructor(
-    private val account: FirestoreRoutineRepository,
-    private val local: LocalRoutineRepository
+class RoutedRoutineRepository(
+    private val account: RoutineRepository,
+    private val local: RoutineRepository
 ) : RoutineRepository {
+    /** For Hilt. The constructor above takes any implementation, so a test can check where each call goes. */
+    @Inject constructor(firestore: FirestoreRoutineRepository, room: LocalRoutineRepository) :
+        this(account = firestore, local = room)
+
     private fun source(ownerUid: String): RoutineRepository = if (ownerUid == LOCAL_OWNER_UID) local else account
 
     override fun observeDay(ownerUid: String, viewer: RoutineViewer, date: LocalDate) =
@@ -55,12 +61,27 @@ class RoutedRoutineRepository @Inject constructor(
 
     override suspend fun setTaskDone(ownerUid: String, taskId: String, isDone: Boolean) =
         source(ownerUid).setTaskDone(ownerUid, taskId, isDone)
+
+    // The members below have a default body in the interface. Without these lines that default would run
+    // here: getDays, for example, would read one day per query instead of the whole period at once.
+    override suspend fun getDays(ownerUid: String, viewer: RoutineViewer, dates: List<LocalDate>) =
+        source(ownerUid).getDays(ownerUid, viewer, dates)
+
+    override suspend fun setDone(ownerUid: String, task: RoutineTask, isDone: Boolean) =
+        source(ownerUid).setDone(ownerUid, task, isDone)
+
+    override suspend fun delete(ownerUid: String, task: RoutineTask, scope: DeleteScope) =
+        source(ownerUid).delete(ownerUid, task, scope)
 }
 
-class RoutedRoutineSeriesRepository @Inject constructor(
-    private val account: FirestoreRoutineSeriesRepository,
-    private val local: LocalRoutineSeriesRepository
+class RoutedRoutineSeriesRepository(
+    private val account: RoutineSeriesRepository,
+    private val local: RoutineSeriesRepository
 ) : RoutineSeriesRepository {
+    /** For Hilt. The constructor above takes any implementation, so a test can check where each call goes. */
+    @Inject constructor(firestore: FirestoreRoutineSeriesRepository, room: LocalRoutineSeriesRepository) :
+        this(account = firestore, local = room)
+
     private fun source(ownerUid: String): RoutineSeriesRepository =
         if (ownerUid == LOCAL_OWNER_UID) local else account
 
@@ -95,10 +116,14 @@ class RoutedRoutineSeriesRepository @Inject constructor(
 }
 
 @Suppress("TooManyFunctions") // Implements AacBoardRepository, one function per operation.
-class RoutedAacBoardRepository @Inject constructor(
-    private val account: FirestoreAacBoardRepository,
-    private val local: LocalAacBoardRepository
+class RoutedAacBoardRepository(
+    private val account: AacBoardRepository,
+    private val local: AacBoardRepository
 ) : AacBoardRepository {
+    /** For Hilt. The constructor above takes any implementation, so a test can check where each call goes. */
+    @Inject constructor(firestore: FirestoreAacBoardRepository, room: LocalAacBoardRepository) :
+        this(account = firestore, local = room)
+
     private fun source(ownerUid: String): AacBoardRepository = if (ownerUid == LOCAL_OWNER_UID) local else account
 
     override fun observeBoards(ownerUid: String) = source(ownerUid).observeBoards(ownerUid)
@@ -149,10 +174,14 @@ class RoutedAacBoardRepository @Inject constructor(
         source(ownerUid).reorderSymbols(ownerUid, boardId, positions)
 }
 
-class RoutedSavedMessageRepository @Inject constructor(
-    private val account: FirestoreSavedMessageRepository,
-    private val local: LocalSavedMessageRepository
+class RoutedSavedMessageRepository(
+    private val account: SavedMessageRepository,
+    private val local: SavedMessageRepository
 ) : SavedMessageRepository {
+    /** For Hilt. The constructor above takes any implementation, so a test can check where each call goes. */
+    @Inject constructor(firestore: FirestoreSavedMessageRepository, room: LocalSavedMessageRepository) :
+        this(account = firestore, local = room)
+
     private fun source(ownerUid: String): SavedMessageRepository = if (ownerUid == LOCAL_OWNER_UID) local else account
 
     override fun observeSavedMessages(ownerUid: String) = source(ownerUid).observeSavedMessages(ownerUid)

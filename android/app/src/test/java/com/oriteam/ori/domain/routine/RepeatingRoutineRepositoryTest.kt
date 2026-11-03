@@ -189,6 +189,16 @@ class RepeatingRoutineRepositoryTest {
     }
 
     @Test
+    fun `creating again a repeating activity that is already there updates it, even at the limit`() = runTest {
+        rules.series.value = DataResult.Success(List(MAX_ROUTINE_SERIES) { everyMonday().copy(id = "s$it") })
+
+        // A move to the account that was interrupted writes the same series again, with the same id.
+        repository.createActivity(OWNER, "s0", plainDraft().copy(repeat = RepeatRule.EveryDay))
+
+        assertEquals(listOf("update s0"), rules.log)
+    }
+
+    @Test
     fun `starting or stopping to repeat is one write, so the day never shows the activity twice`() = runTest {
         rules.series.value = DataResult.Success(listOf(everyMonday()))
 

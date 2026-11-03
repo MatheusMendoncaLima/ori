@@ -28,11 +28,13 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -87,18 +89,32 @@ class RoutineViewModel @Inject constructor(
     /** The month on screen, or null while the week is shown. */
     private val shownMonth = MutableStateFlow<YearMonth?>(null)
 
+    /** How many times the activities of the chosen day changed while it stayed chosen. */
+    private data class DayEdits(val date: LocalDate? = null, val ids: Set<String> = emptySet(), val count: Int = 0) {
+        fun after(date: LocalDate, ids: Set<String>) =
+            DayEdits(date, ids, if (date == this.date && ids != this.ids) count + 1 else count)
+    }
+
     /**
-     * One read of the open month, again when the activities of the chosen day change (an activity was
-     * added or removed). A month that cannot be read shows no marks: they only help to find a day.
+     * Changes when an activity is added to or removed from the chosen day. Choosing another day is not a
+     * change, and neither is a day still loading: each would read the whole month again for nothing.
+     */
+    private val chosenDayEdits: Flow<Int> = day.filterNotNull()
+        .filter { it.state.content !is ContentState.Loading }
+        .scan(DayEdits()) { edits, current -> edits.after(current.state.date, current.tasks.keys) }
+        .map { it.count }
+        .distinctUntilChanged()
+
+    /**
+     * One read of the open month, again when the activities of the chosen day change: a repeating activity
+     * added there may fall on other days too. A month that cannot be read shows no marks: they only help to
+     * find a day.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val monthMarks: Flow<Set<LocalDate>> = combine(
-        request.filterNotNull(),
-        shownMonth,
-        day.filterNotNull().map { it.tasks.keys }.distinctUntilChanged()
-    ) { current, month, _ -> current to month }
-        .mapLatest { (current, month) -> month?.let { datesWithActivities(current, it) }.orEmpty() }
-        .onStart { emit(emptySet()) }
+    private val monthMarks: Flow<Set<LocalDate>> =
+        combine(request.filterNotNull(), shownMonth, chosenDayEdits) { current, month, _ -> current to month }
+            .mapLatest { (current, month) -> month?.let { datesWithActivities(current, it) }.orEmpty() }
+            .onStart { emit(emptySet()) }
 
     /** The listener runs only while the screen collects this state (lifecycle-aware in the UI). */
     val uiState: StateFlow<RoutineUiState> =

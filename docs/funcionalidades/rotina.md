@@ -337,7 +337,7 @@ No celular deitado, o mês rola dentro do próprio espaço. Os dias com atividad
 
 ## Mudanças de 03/11/2026 (fim da lista de revisão)
 
-**Marcas no mês.** Com o mês aberto, os dias com atividades têm um ponto, como no calendário da Samsung, e o leitor de tela diz "tem atividades". `RoutineDayList` avisa o mês mostrado (`RoutineViewModel.onMonthShown`), e o ViewModel lê os dias de uma vez (`getDays`), de novo quando as atividades do dia escolhido mudam. Se a leitura falhar, o mês aparece sem pontos: eles só ajudam a achar um dia.
+**Marcas no mês.** Com o mês aberto, os dias com atividades têm um ponto, como no calendário da Samsung, e o leitor de tela diz "tem atividades". `RoutineDayList` avisa o mês mostrado (`RoutineViewModel.onMonthShown`), e o ViewModel lê os dias de uma vez (`getDays`). Ele lê de novo quando outro mês aparece ou quando uma atividade entra ou sai do dia escolhido, porque uma atividade repetida cai em outros dias também. Tocar noutro dia do mesmo mês não lê nada além daquele dia (teste "choosing another day of the open month does not read the month again"). Se a leitura falhar, o mês aparece sem pontos: eles só ajudam a achar um dia.
 
 **Vários dias numa consulta.** `FirestoreRoutineRepository.getDays` lê o período numa consulta por intervalo de `date` (página de 100), em vez de uma por dia. Para o dono basta o índice automático de `date`. Para quem acompanha, a consulta também filtra `status == active`, e isso usa o índice composto de `functions/firestore.indexes.json`, publicado com `firebase deploy --only firestore:indexes`. Relatórios e marcas do mês usam essa leitura.
 
@@ -351,4 +351,4 @@ No celular deitado, o mês rola dentro do próprio espaço. Os dias com atividad
 
 **Dias da repetição.** Cada dia ocupa uma fatia igual da linha, com 48 dp de altura; o círculo continua com 40 dp.
 
-**Testes:** `RoutineViewModelTest` (marcas do mês), `UsabilityTest` (relógio, área dos dias, mês dito pelo leitor de tela, data em Tarefas), `RepeatingRoutineRepositoryTest` e `LocalRepositoriesTest` (repetição ligada e desligada numa gravação), emulador: "an activity becomes a series, and back, in one batch" e "the owner reads a period with one bounded range query".
+**Testes:** `RoutedRepositoriesTest` (o `getDays` chega ao Firestore e não vira uma consulta por dia), `RoutineViewModelTest` (marcas do mês), `UsabilityTest` (relógio, área dos dias, mês dito pelo leitor de tela, data em Tarefas), `RepeatingRoutineRepositoryTest` e `LocalRepositoriesTest` (repetição ligada e desligada numa gravação), emulador: "an activity becomes a series, and back, in one batch" e "the owner reads a period with one bounded range query".

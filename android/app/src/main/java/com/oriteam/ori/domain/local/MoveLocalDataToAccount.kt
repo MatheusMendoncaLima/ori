@@ -21,6 +21,7 @@ import com.oriteam.ori.domain.routine.RoutineRepository
 import com.oriteam.ori.domain.routine.RoutineSeries
 import com.oriteam.ori.domain.routine.RoutineTask
 import com.oriteam.ori.domain.routine.RoutineViewer
+import com.oriteam.ori.domain.routine.seriesIdOf
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
@@ -66,9 +67,10 @@ class MoveLocalDataToAccount @Inject constructor(
         private var hasItemsOverLimit = false
 
         suspend fun run(accountUid: String, data: LocalDataSnapshot): LocalDataMoveResult = try {
-            // Before the days: an occurrence that was marked finds its series already there.
-            moveSeries(accountUid, data.series)
-            moveTasks(accountUid, data.tasks)
+            // Before the days: an occurrence that was marked finds its series already there. The days of a
+            // series that stays here stay with it, or the account would show them as loose activities.
+            val keptSeries = moveSeries(accountUid, data.series)
+            moveTasks(accountUid, data.tasks.filterNot { seriesIdOf(it.id) in keptSeries })
             moveBoards(accountUid, data.boards)
             moveSavedMessages(accountUid, data)
             if (hasItemsOverLimit) LocalDataMoveResult.SOME_ITEMS_DID_NOT_FIT else LocalDataMoveResult.COMPLETED
@@ -76,15 +78,26 @@ class MoveLocalDataToAccount @Inject constructor(
             LocalDataMoveResult.WAITING_FOR_CONNECTION
         }
 
-        /** The same id as on the device: a repeated attempt writes the same series. */
-        private suspend fun moveSeries(accountUid: String, localSeries: List<RoutineSeries>) {
+        /**
+         * The same id as on the device: a repeated attempt writes the same series. A series the account has no
+         * room for stays on the device, and the others go on. Returns the ids of the ones that stayed.
+         */
+        private suspend fun moveSeries(accountUid: String, localSeries: List<RoutineSeries>): Set<String> {
+            val kept = mutableSetOf<String>()
             localSeries.forEach { series ->
-                routine.createActivity(accountUid, series.id, series.toDraft()).confirm()
+                val creation = routine.createActivity(accountUid, series.id, series.toDraft())
+                if (creation == DataResult.Failure(DataError.PRECONDITION_FAILED)) {
+                    hasItemsOverLimit = true
+                    kept += series.id
+                    return@forEach
+                }
+                creation.confirm()
                 series.skippedDates.forEach { date ->
                     routine.delete(accountUid, series.occurrenceOn(date), DeleteScope.THIS_DAY).confirm()
                 }
                 localData.removeSeries(series.id)
             }
+            return kept
         }
 
         private suspend fun moveTasks(accountUid: String, tasks: List<RoutineTask>) {

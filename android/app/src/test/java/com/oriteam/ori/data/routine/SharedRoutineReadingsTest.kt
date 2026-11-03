@@ -15,6 +15,7 @@ import com.oriteam.ori.domain.routine.RoutineViewer
 import com.oriteam.ori.testing.DAY
 import com.oriteam.ori.testing.FakeRoutineRepository
 import com.oriteam.ori.testing.OWNER
+import com.oriteam.ori.testing.assertForwardsEveryMember
 import com.oriteam.ori.testing.snapshotOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.awaitCancellation
@@ -140,5 +141,15 @@ class SharedRoutineReadingsTest {
 
         assertTrue(received.single() is DataResult.Failure)
         assertEquals(listOf(DAY, DAY), tasks.observedDays)
+    }
+
+    @Test
+    fun `everything that is not a shared reading goes straight through, reading several days included`() = runTest {
+        assertForwardsEveryMember(RoutineRepository::class.java, OWNER) {
+            SharedReadingRoutineRepository(it, backgroundScope)
+        }
+        assertForwardsEveryMember(RoutineSeriesRepository::class.java, OWNER) {
+            SharedReadingSeriesRepository(it, backgroundScope)
+        }
     }
 }
