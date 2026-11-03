@@ -1,3 +1,532 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">ori</string>
+
+    <!-- Shared form texts -->
+    <string name="email_label">E-mail</string>
+    <string name="password_label">Senha</string>
+    <string name="password_placeholder">••••••••</string>
+    <string name="show_password">Exibir senha</string>
+    <string name="hide_password">Ocultar senha</string>
+    <string name="text_case_toggle_label">Aa</string>
+    <string name="text_case_toggle_description">Mostrar textos em letras maiúsculas</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_logo_description">Logo Ori</string>
+    <string name="onboarding_slogan">organizar • comunicar • cuidar</string>
+    <string name="onboarding_tagline">Seu Apoio. Sempre.</string>
+    <string name="onboarding_continue_without_account">Continuar sem conta</string>
+
+    <!-- Login -->
+    <!-- Quotes keep the trailing space before the bold app name. -->
+    <string name="login_subtitle_returning_prefix">"Obrigado por voltar ao "</string>
+    <string name="login_subtitle_returning_suffix">!</string>
+    <string name="login_welcome_title">Boas-vindas!</string>
+    <string name="login_welcome_message">Acesse sua conta para continuar</string>
+    <string name="login_welcome_icon_description">Mão acenando</string>
+    <string name="email_placeholder">seu@email.com</string>
+    <string name="login_submit">Entrar</string>
+    <string name="login_forgot_password">Esqueci minha senha</string>
+    <string name="login_no_account_question">Ainda não tem conta?</string>
+    <string name="login_create_account">Criar uma conta</string>
+
+    <!-- Register -->
+    <string name="register_subtitle">Preencha seus dados para criar sua conta</string>
+    <string name="register_name_label">Seu nome</string>
+    <string name="register_name_placeholder">Digite seu nome completo</string>
+    <string name="register_confirm_password_label">Confirmar senha</string>
+    <string name="register_submit">Cadastrar</string>
+    <string name="register_has_account">Já tem uma conta? Entrar</string>
+
+    <!-- Validation messages (CredentialsValidationError) -->
+    <string name="error_missing_sign_in_fields">Preencha o e-mail e a senha</string>
+    <string name="error_missing_reset_email">Informe o e-mail para redefinir a senha</string>
+    <string name="error_missing_registration_fields">Preencha todos os campos</string>
+    <string name="error_password_mismatch">As senhas não coincidem</string>
+    <!-- Keep the number in sync with MIN_PASSWORD_LENGTH in CredentialsValidation.kt. -->
+    <string name="error_password_too_short">A senha precisa ter no mínimo 6 caracteres</string>
+
+    <!-- Authentication messages (AuthError) -->
+    <string name="error_invalid_email">Este e-mail não é válido</string>
+    <string name="error_invalid_credentials">E-mail ou senha incorretos</string>
+    <string name="error_email_already_in_use">Este e-mail já está em uso</string>
+    <string name="error_weak_password">Escolha uma senha mais forte</string>
+    <string name="error_user_disabled">Esta conta está desativada</string>
+    <string name="error_too_many_requests">Muitas tentativas. Aguarde um pouco e tente novamente</string>
+    <string name="error_network_unavailable">Sem conexão. Verifique sua internet e tente novamente</string>
+    <string name="error_profile_update_failed">Sua conta foi criada, mas não foi possível salvar seu nome</string>
+    <string name="error_unknown">Algo deu errado. Tente novamente</string>
+    <string name="password_reset_requested">Se houver uma conta com este e-mail, enviaremos um link para redefinir a senha</string>
+    <!-- Shared actions and states -->
+    <string name="action_back">Voltar</string>
+    <string name="action_retry">Tentar novamente</string>
+    <string name="state_loading">Carregando…</string>
+    <string name="state_error_title">Não foi possível carregar</string>
+
+    <!-- Routine components -->
+    <string name="routine_step_done">Concluída</string>
+    <string name="routine_step_pending">Pendente</string>
+
+    <!-- Communication board (AAC) components -->
+    <string name="aac_message_hint">Toque nos símbolos para montar uma frase</string>
+    <string name="aac_speak">Falar</string>
+    <string name="aac_clear">Apagar tudo</string>
+    <string name="aac_remove_symbol">Remover %1$s</string>
+    <!-- Session and data errors (DataError) -->
+    <string name="error_permission_denied">Você não tem permissão para ver ou alterar estes dados</string>
+    <string name="error_not_found">Não encontramos o que você procurou</string>
+    <string name="error_invalid_input">Os dados informados não são válidos</string>
+    <string name="error_action_not_possible">Não foi possível fazer isso agora</string>
+    <string name="error_missing_profile_name">Informe seu nome</string>
+    <string name="action_cancel">Cancelar</string>
+
+    <!-- Signed-in navigation -->
+    <string name="main_my_routine">Minha rotina</string>
+    <string name="main_care_recipients">Acompanhados</string>
+
+    <!-- Profile and roles -->
+    <string name="profile_setup_title">Complete seu perfil</string>
+    <string name="profile_setup_subtitle">Para continuar, conte como você vai usar o ori</string>
+    <string name="profile_setup_save">Salvar perfil</string>
+
+    <!-- Routine -->
+    <string name="routine_empty_title">Nenhuma atividade ainda</string>
+    <string name="routine_empty_owner">Nenhuma atividade neste dia. Use \"Adicionar atividade\" para criar uma.</string>
+    <string name="routine_empty_caregiver">Esta pessoa ainda não tem atividades visíveis para você.</string>
+
+    <!-- Account -->
+    <string name="account_uppercase">Letras maiúsculas</string>
+    <string name="account_uppercase_description">Mostra todos os textos do app em letras maiúsculas</string>
+    <string name="account_sign_out">Sair da conta</string>
+    <string name="account_sign_out_title">Sair da conta?</string>
+    <string name="account_sign_out_message">Nada é apagado: seus dados continuam na conta. Para voltar, entre com seu e-mail e senha.</string>
+
+    <!-- Care links -->
+    <string name="links_title">Pessoas vinculadas</string>
+    <string name="links_empty">Nenhuma pessoa vinculada.</string>
+    <string name="links_can_manage">Pode gerenciar a rotina</string>
+    <string name="links_view_only">Somente visualização</string>
+    <string name="links_revoke">Encerrar</string>
+    <string name="links_revoke_title">Encerrar vínculo com %1$s?</string>
+    <string name="links_revoke_message">O acesso à rotina deixa de existir na hora. Para vincular de novo, será preciso um novo convite.</string>
+    <string name="links_revoke_confirm">Encerrar vínculo</string>
+    <string name="links_allow_manage">Permitir que %1$s gerencie minha rotina</string>
+    <string name="links_allow_manage_description">Sem esta permissão, a pessoa apenas vê as atividades</string>
+
+    <!-- Invitations -->
+    <string name="invitation_caregiver_title">Convidar alguém</string>
+    <string name="invitation_caregiver_body">Gere um código e entregue para a pessoa que você acompanha. Ela digita o código na conta dela.</string>
+    <string name="invitation_create">Gerar código de convite</string>
+    <string name="invitation_expires_at">Válido até %1$s</string>
+    <string name="invitation_primary_title">Vincular um responsável</string>
+    <string name="invitation_primary_body">Digite o código que seu responsável gerou. Ele começa só podendo ver sua rotina.</string>
+    <string name="invitation_code_label">Código de convite</string>
+    <string name="invitation_code_placeholder">ABCD2345</string>
+    <string name="invitation_accept">Vincular</string>
+    <string name="invitation_linked">Pronto! Você está vinculado a %1$s.</string>
+    <string name="invitation_error_format">O código tem 8 letras e números</string>
+    <string name="invitation_error_not_found">Código não encontrado. Confira as letras</string>
+    <string name="invitation_error_expired">Este código expirou ou já foi usado</string>
+    <string name="invitation_error_already_linked">Vocês já estão vinculados</string>
+    <string name="invitation_error_not_allowed">Sua conta não pode fazer isso</string>
+
+    <!-- Care recipients (caregiver) -->
+    <string name="care_recipients_empty_title">Você ainda não acompanha ninguém</string>
+    <string name="care_recipients_empty_message">Gere um código de convite em Conta e entregue para a pessoa.</string>
+    <string name="care_recipients_choose_title">Escolha uma pessoa</string>
+    <string name="care_recipients_choose_message">A rotina dela aparece aqui.</string>
+    <string name="care_recipients_link_ended_title">Vínculo encerrado</string>
+    <string name="care_recipients_link_ended_message">Você não tem mais acesso à rotina desta pessoa.</string>
+
+    <!-- Offline and synchronization -->
+    <string name="sync_showing_saved_data">Sem conexão. Mostrando a última versão salva no aparelho.</string>
+    <string name="sync_pending_changes">Alteração salva no aparelho. Ela será enviada quando houver conexão.</string>
+    <string name="routine_truncated">Mostrando as primeiras 100 atividades.</string>
+
+    <!-- Days -->
+    <string name="day_today">Hoje</string>
+    <string name="day_yesterday">Ontem</string>
+    <string name="day_tomorrow">Amanhã</string>
+
+    <!-- Routine activities -->
+    <string name="activity_add">Adicionar atividade</string>
+    <string name="activity_open_details">ver detalhes</string>
+    <string name="activity_toggle_done">Concluir: %1$s</string>
+    <string name="activity_badge_hidden">Só você vê</string>
+    <string name="activity_badge_set_by_caregiver">Definida pelo responsável</string>
+    <string name="activity_details_title">Detalhes da atividade</string>
+    <string name="activity_detail_line">%1$s: %2$s</string>
+    <string name="activity_time_label">Horário</string>
+    <string name="activity_no_time">Sem horário</string>
+    <string name="activity_status_label">Situação</string>
+    <string name="activity_mark_done">Marcar como concluída</string>
+    <string name="activity_mark_pending">Marcar como pendente</string>
+    <string name="activity_edit">Editar</string>
+    <string name="activity_delete">Excluir</string>
+    <string name="activity_delete_title">Excluir %1$s?</string>
+    <string name="activity_delete_message">A atividade será removida da rotina. Isso não pode ser desfeito.</string>
+    <string name="activity_reserved_explanation">Esta atividade só pode ser alterada por quem a gerencia.</string>
+    <string name="activity_not_found_title">Atividade não encontrada</string>
+    <string name="activity_not_found_message">Ela pode ter sido excluída ou estar em outro dia.</string>
+    <string name="activity_choose_title">Escolha uma atividade</string>
+    <string name="activity_choose_message">Os detalhes aparecem aqui.</string>
+    <string name="activity_new_title">Nova atividade</string>
+    <string name="activity_edit_title">Editar atividade</string>
+    <string name="activity_title_label">O que fazer</string>
+    <string name="activity_title_placeholder">Ex.: Tomar café da manhã</string>
+    <string name="activity_time_input_label">Horário (opcional)</string>
+    <string name="activity_time_pick">Escolher</string>
+    <string name="activity_time_pick_confirm">Usar este horário</string>
+    <string name="activity_time_placeholder">08:30</string>
+    <string name="activity_description_label">Detalhes (opcional)</string>
+    <string name="activity_description_placeholder">Passos, lembretes ou observações</string>
+    <string name="activity_hide_from_caregiver">Ocultar do responsável</string>
+    <string name="activity_hide_from_caregiver_description">Seu responsável não verá esta atividade</string>
+    <string name="activity_owner_can_complete">O usuário pode marcar como concluída</string>
+    <string name="activity_owner_can_complete_description">Sem isso, só você marca a conclusão</string>
+    <string name="activity_save">Salvar</string>
+    <string name="activity_error_missing_title">Escreva o que deve ser feito</string>
+    <string name="activity_error_title_too_long">O nome pode ter até 200 caracteres</string>
+    <string name="activity_error_invalid_time">Use o horário no formato 08:30</string>
+    <string name="activity_error_description_too_long">Os detalhes podem ter até 500 caracteres</string>
+    <string name="activity_error_duplicate">Já existe esta atividade neste dia e horário</string>
+
+    <!-- Comunicação (CAA) -->
+    <string name="aac_organize">Organizar pranchas</string>
+    <string name="aac_preferences">Preferências da comunicação</string>
+    <string name="aac_saved_messages">Frases salvas</string>
+    <string name="aac_message_description">Mensagem: %1$s</string>
+    <string name="aac_message_full">A mensagem chegou ao limite. Fale, salve ou apague para continuar.</string>
+    <string name="aac_speech_unavailable">Sem voz neste aparelho: Falar mostra a mensagem em letras grandes.</string>
+    <string name="aac_stop">Parar</string>
+    <string name="aac_show">Mostrar em letras grandes</string>
+    <string name="aac_remove_last">Apagar última</string>
+    <string name="aac_remove_last_short">Apagar</string>
+    <string name="aac_more">Mais</string>
+    <string name="aac_more_description">Mais ações da mensagem</string>
+    <string name="aac_write_open">campo de texto aberto</string>
+    <string name="aac_write_closed">campo de texto fechado</string>
+    <string name="aac_save_message">Salvar frase</string>
+    <string name="aac_message_saved">Frase salva.</string>
+    <string name="aac_type_label">Escrever</string>
+    <string name="aac_type_placeholder">Palavra ou frase</string>
+    <string name="aac_type_add">Adicionar</string>
+    <string name="aac_tap_to_add">adicionar à mensagem</string>
+    <string name="aac_tap_to_speak">falar</string>
+    <string name="aac_display_close">Fechar</string>
+    <string name="aac_delete">Excluir</string>
+    <string name="aac_delete_saved_title">Excluir esta frase salva?</string>
+    <string name="aac_delete_saved_message">Excluir a frase %1$s</string>
+    <string name="aac_saved_empty_message">Monte uma mensagem e toque em Salvar frase para dizê-la de novo com um toque.</string>
+    <string name="aac_board_empty_title">Prancha vazia</string>
+    <string name="aac_board_empty_message">Esta prancha ainda não tem símbolos. Você pode adicioná-los em Organizar pranchas.</string>
+    <string name="aac_no_boards_title">Nenhuma prancha ainda</string>
+    <string name="aac_no_boards_message">Você já pode escrever e falar pela barra de mensagem. Para usar símbolos, comece com uma prancha sugerida ou monte a sua do seu jeito.</string>
+    <string name="aac_use_starter_board">Usar a prancha sugerida</string>
+    <string name="aac_create_own_board">Montar minha prancha</string>
+
+    <string name="aac_new_board">Nova prancha</string>
+    <string name="aac_rename_board">Renomear prancha</string>
+    <string name="aac_delete_board">Excluir prancha</string>
+    <string name="aac_board_name">Nome da prancha</string>
+    <string name="aac_board_name_placeholder">Ex.: Comida, Sentimentos</string>
+    <string name="aac_board_save">Salvar</string>
+    <string name="aac_delete_board_title">Excluir a prancha %1$s?</string>
+    <string name="aac_delete_board_message">A prancha e todos os símbolos dela serão excluídos. Isso não pode ser desfeito.</string>
+    <string name="aac_delete_symbol_title">Excluir o símbolo %1$s?</string>
+    <string name="aac_delete_symbol_message">O símbolo sai da prancha. Isso não pode ser desfeito.</string>
+    <string name="aac_organize_empty_message">Crie uma prancha para reunir símbolos, como Comida ou Sentimentos.</string>
+    <string name="aac_organize_board_empty_message">Toque em Adicionar símbolo para começar.</string>
+    <string name="aac_choose_board_title">Escolha uma prancha</string>
+    <string name="aac_choose_board_message">Os símbolos da prancha escolhida aparecem aqui.</string>
+    <string name="aac_add_symbol">Adicionar símbolo</string>
+    <string name="aac_symbol_says">Fala: %1$s</string>
+    <string name="aac_move_earlier">Mover %1$s para antes</string>
+    <string name="aac_move_later">Mover %1$s para depois</string>
+
+    <string name="aac_new_symbol">Novo símbolo</string>
+    <string name="aac_edit_symbol">Editar símbolo</string>
+    <string name="aac_symbol_label">Rótulo</string>
+    <string name="aac_symbol_label_placeholder">Ex.: Água</string>
+    <string name="aac_symbol_phrase">Frase falada (opcional)</string>
+    <string name="aac_symbol_phrase_placeholder">Ex.: Eu quero água</string>
+    <string name="aac_symbol_phrase_help">A frase é falada quando o símbolo é tocado sozinho. Numa mensagem montada, ele fala o próprio rótulo.</string>
+    <string name="aac_symbol_picture">Imagem</string>
+    <string name="aac_symbol_no_picture">Sem imagem: o símbolo mostra só o rótulo.</string>
+    <string name="aac_symbol_emoji">Emoji</string>
+    <string name="aac_symbol_emoji_placeholder">Escolha abaixo ou digite um emoji</string>
+    <string name="aac_choose_photo">Escolher foto</string>
+    <string name="aac_photo_importing">Preparando a foto…</string>
+    <string name="aac_remove_picture">Remover imagem</string>
+    <string name="aac_photo_device_note">Fotos são reduzidas. Com conta, ficam salvas nela e aparecem nos seus outros aparelhos; sem conta, ficam só aqui. Use apenas fotos que você tem direito de usar.</string>
+    <string name="aac_photo_caregiver_note">Só a pessoa que usa a comunicação pode adicionar fotos.</string>
+    <string name="aac_save_symbol">Salvar símbolo</string>
+    <string name="aac_delete_symbol">Excluir símbolo</string>
+
+    <string name="aac_error_missing_label">Escreva o rótulo do símbolo.</string>
+    <string name="aac_error_label_too_long">Use um rótulo de até 40 caracteres.</string>
+    <string name="aac_error_phrase_too_long">Use uma frase de até 200 caracteres.</string>
+    <string name="aac_error_invalid_emoji">Use um único emoji.</string>
+    <string name="aac_error_duplicate_label">Esta prancha já tem um símbolo com esse rótulo.</string>
+    <string name="aac_error_board_full">Esta prancha chegou a 60 símbolos. Crie outra prancha para continuar.</string>
+    <string name="aac_error_missing_board_name">Escreva o nome da prancha.</string>
+    <string name="aac_error_board_name_too_long">Use um nome de até 40 caracteres.</string>
+    <string name="aac_error_duplicate_board">Já existe uma prancha com esse nome.</string>
+    <string name="aac_error_board_limit">Você chegou a 30 pranchas. Exclua uma para criar outra.</string>
+    <string name="photo_error_unreadable">Não foi possível abrir esta imagem. Tente outra.</string>
+    <string name="photo_error_storage">Não foi possível guardar a foto no aparelho. Verifique o espaço livre e tente de novo.</string>
+
+    <string name="aac_preference_mode">Ao tocar em um símbolo</string>
+    <string name="aac_mode_compose">Montar a frase</string>
+    <string name="aac_mode_compose_description">Os símbolos formam uma mensagem, falada ao tocar em Falar</string>
+    <string name="aac_mode_feedback">Montar a frase ouvindo cada símbolo</string>
+    <string name="aac_mode_feedback_description">Cada símbolo é falado ao entrar na mensagem</string>
+    <string name="aac_mode_immediate">Falar na hora</string>
+    <string name="aac_mode_immediate_description">Cada toque fala o símbolo, sem montar frase</string>
+    <string name="aac_preference_size">Tamanho dos símbolos</string>
+    <string name="aac_size_small">Pequeno (mais símbolos na tela)</string>
+    <string name="aac_size_medium">Médio</string>
+    <string name="aac_size_large">Grande (menos símbolos, mais fáceis de tocar)</string>
+    <string name="aac_preference_labels">Rótulos</string>
+    <string name="aac_label_below">Abaixo da imagem</string>
+    <string name="aac_label_above">Acima da imagem</string>
+    <string name="aac_label_text_only">Só o texto, em letras maiores</string>
+    <string name="aac_label_image_only">Só a imagem (o leitor de tela continua lendo o rótulo)</string>
+    <string name="aac_preferences_device_note">Estas preferências valem para este aparelho.</string>
+    <string name="aac_licenses_title">De onde vêm as imagens</string>
+    <string name="aac_licenses_text">Os símbolos sugeridos são emojis Unicode, desenhados pela fonte do próprio aparelho; o app não inclui pictogramas de terceiros. As fotos são escolhidas por você, reduzidas e guardadas só neste aparelho.</string>
+
+    <string name="aac_starter_board_name">Básico</string>
+    <string name="aac_starter_i">eu</string>
+    <string name="aac_starter_you">você</string>
+    <string name="aac_starter_want">quero</string>
+    <string name="aac_starter_need">preciso</string>
+    <string name="aac_starter_am">estou</string>
+    <string name="aac_starter_no">não</string>
+    <string name="aac_starter_with">com</string>
+    <string name="aac_starter_like">gosto</string>
+    <string name="aac_starter_help">ajuda</string>
+    <string name="aac_starter_water">água</string>
+    <string name="aac_starter_food">comida</string>
+    <string name="aac_starter_bathroom">banheiro</string>
+    <string name="aac_starter_pain">dor</string>
+    <string name="aac_starter_sleepy">sono</string>
+    <string name="aac_starter_hungry">fome</string>
+    <string name="aac_starter_cold">frio</string>
+    <string name="aac_phrase_yes">Sim</string>
+    <string name="aac_phrase_no">Não</string>
+    <string name="aac_phrase_help">Preciso de ajuda</string>
+    <string name="aac_phrase_pain">Estou com dor</string>
+    <string name="aac_phrase_water">Quero água</string>
+    <string name="aac_phrase_hungry">Estou com fome</string>
+    <string name="aac_phrase_bathroom">Preciso ir ao banheiro</string>
+    <string name="aac_phrase_sleepy">Estou com sono</string>
+    <string name="aac_phrase_cold">Estou com frio</string>
+    <string name="aac_phrase_hot">Estou com calor</string>
+    <string name="aac_phrase_rest">Quero descansar</string>
+    <string name="aac_phrase_please">Por favor</string>
+    <string name="aac_phrase_not_understood">Não entendi</string>
+    <string name="aac_phrase_repeat">Pode repetir?</string>
+    <string name="aac_phrase_wait">Espere um pouco</string>
+    <string name="aac_phrase_good_morning">Bom dia</string>
+    <string name="aac_save_short">Salvar</string>
+    <string name="aac_add_word">Nova palavra</string>
+    <string name="aac_save_word">Guardar na prancha, com imagem</string>
+    <string name="profile_photo_choose">Escolher foto</string>
+    <string name="profile_photo_change">Trocar foto</string>
+    <string name="profile_photo_remove">Remover foto</string>
+    <string name="profile_photo_note">Com conta, a foto fica salva nela. Sem conta, fica só neste aparelho.</string>
+    <string name="repeat_title">Repetir</string>
+    <string name="repeat_none">Não repete</string>
+    <string name="repeat_every_day">Todos os dias</string>
+    <string name="repeat_business_days">Dias úteis</string>
+    <string name="repeat_weekend">Fim de semana</string>
+    <string name="repeat_last_day">Último dia do mês</string>
+    <string name="repeat_last_business_day">Último dia útil do mês</string>
+    <string name="repeat_interval">A cada</string>
+    <string name="repeat_interval_one">Toda semana</string>
+    <string name="repeat_interval_many" tools:ignore="PluralsCandidate">%1$d semanas</string>
+    <string name="repeat_summary_none">Só no dia %1$s</string>
+    <string name="repeat_summary_every_day">Todos os dias, a partir de %1$s</string>
+    <string name="repeat_summary_business_days">De segunda a sexta, a partir de %1$s</string>
+    <string name="repeat_summary_weekend">Sábado e domingo, a partir de %1$s</string>
+    <string name="repeat_summary_weekly">Toda semana: %1$s, a partir de %2$s</string>
+    <string name="repeat_summary_interval" tools:ignore="PluralsCandidate">A cada %1$d semanas: %2$s, a partir de %3$s</string>
+    <string name="repeat_summary_last_day">No último dia de cada mês</string>
+    <string name="repeat_summary_last_business_day">No último dia útil de cada mês</string>
+    <string name="activity_badge_repeats">Repete</string>
+    <string name="activity_repeat_label">Repete</string>
+    <string name="activity_delete_repeating_message">Esta atividade se repete. Os dias já marcados como feitos continuam nos relatórios.</string>
+    <string name="activity_delete_this_day">Só este dia</string>
+    <string name="activity_delete_all_days">Todos os dias</string>
+    <string name="routine_repeating_unavailable">Não foi possível carregar as atividades que se repetem.</string>
+    <string name="calendar_show_month">Ver o mês inteiro</string>
+    <string name="calendar_show_week">Voltar para a semana</string>
+    <string name="month_previous">Mês anterior</string>
+    <string name="month_next">Próximo mês</string>
+    <string name="photo_error_upload">Não foi possível salvar a foto na sua conta. Verifique a conexão e tente de novo.</string>
+    <string name="aac_error_photo_limit">Você chegou ao limite de 100 fotos. Apague uma foto de outro símbolo ou use um emoji.</string>
+    <string name="aac_tab_build">Montar</string>
+    <string name="aac_tab_ready">Prontas</string>
+
+    <string name="care_recipient_tab_routine">Rotina</string>
+    <string name="care_recipient_tab_communication">Comunicação</string>
+    <string name="links_allow_communication">Permitir que %1$s organize minhas pranchas de comunicação</string>
+    <string name="links_allow_communication_description">A pessoa poderá criar, editar, ordenar e excluir pranchas e símbolos. Suas frases salvas continuam só suas.</string>
+
+    <!-- Preferências -->
+    <string name="preference_text">Tamanho do texto</string>
+    <string name="preference_text_normal">Igual ao do sistema</string>
+    <string name="preference_text_large">Grande</string>
+    <string name="preference_text_larger">Maior</string>
+    <string name="preference_text_largest">Muito grande</string>
+    <string name="preference_theme">Tema</string>
+    <string name="preference_theme_system">Igual ao do sistema</string>
+    <string name="preference_theme_light">Claro</string>
+    <string name="preference_theme_dark">Escuro</string>
+    <string name="preference_simplified">Interface simplificada</string>
+    <string name="preference_simplified_description">Tira enfeites, como bordas e ícones ao lado do texto. Nenhum botão some.</string>
+    <string name="preference_motion">Animações</string>
+    <string name="preference_motion_system">Igual às do sistema</string>
+    <string name="preference_motion_system_description">Segue a opção de remover animações do aparelho</string>
+    <string name="preference_motion_expressive">Expressivas</string>
+    <string name="preference_motion_expressive_description">Movimentos completos e com leve balanço</string>
+    <string name="preference_motion_subtle">Sutis</string>
+    <string name="preference_motion_subtle_description">Mais curtas e sem balanço</string>
+    <string name="preference_motion_reduced">Reduzidas</string>
+    <string name="preference_motion_reduced_description">Só as que ajudam a perceber uma mudança</string>
+    <string name="preference_motion_off">Desligadas</string>
+    <string name="preference_motion_off_description">As mudanças aparecem na hora</string>
+    <string name="preference_density">Espaçamento</string>
+    <string name="preference_density_compact">Compacto (mais conteúdo na tela)</string>
+    <string name="preference_density_comfortable">Confortável</string>
+    <string name="preference_density_spacious">Amplo (mais espaço entre os itens)</string>
+    <string name="preference_lists">Listas</string>
+    <string name="preference_list_detailed">Detalhadas</string>
+    <string name="preference_list_detailed_description">Mostram também a linha de apoio e os avisos</string>
+    <string name="preference_list_summary">Resumidas</string>
+    <string name="preference_list_summary_description">Só a informação principal; o resto aparece ao abrir o item</string>
+    <string name="preference_start_area">Abrir o app em</string>
+
+    <!-- Acesso unificado e uso sem conta -->
+    <string name="onboarding_sign_in">Entrar</string>
+    <string name="onboarding_create_account">Criar uma conta</string>
+    <string name="login_title">Olá!</string>
+    <string name="register_title">Vamos começar</string>
+    <string name="connect_title">Entrar ou criar conta</string>
+    <string name="connect_notice">O que você criou neste aparelho vai para a conta, junto com o que ela já tem. Depois, seus dados ficam disponíveis nos seus outros aparelhos.</string>
+
+    <!-- Navegação -->
+    <string name="main_home">Início</string>
+    <string name="main_profile">Perfil</string>
+    <string name="main_form_sentence">Formar frase</string>
+    <string name="main_routine">Rotina</string>
+    <string name="main_sentences">Frases</string>
+
+    <!-- Início -->
+    <string name="today_greeting">Olá, %1$s!</string>
+    <string name="today_greeting_no_name">Olá!</string>
+    <plurals name="today_progress">
+        <item quantity="one">%1$d de %2$d atividade de hoje concluída</item>
+        <item quantity="many">%1$d de %2$d atividades de hoje concluídas</item>
+        <item quantity="other">%1$d de %2$d atividades de hoje concluídas</item>
+    </plurals>
+    <string name="today_empty">Nenhuma atividade para hoje</string>
+    <string name="today_next">A seguir</string>
+    <string name="today_all_done">Tudo feito por hoje!</string>
+    <string name="shortcut_routine">Minha rotina</string>
+    <string name="shortcut_routine_description">Seu dia, hora a hora</string>
+    <string name="shortcut_tasks">Tarefas</string>
+    <string name="shortcut_tasks_description">O que falta fazer hoje</string>
+    <string name="shortcut_sentence_description">Comunique-se com símbolos e voz</string>
+    <string name="shortcut_reports">Relatórios</string>
+    <string name="shortcut_reports_description">Acompanhe o seu progresso</string>
+
+    <!-- Rotina e tarefas -->
+    <string name="week_previous">Semana anterior</string>
+    <string name="week_next">Próxima semana</string>
+    <string name="week_today">Hoje</string>
+    <string name="week_day_description">%1$s, dia %2$d</string>
+    <string name="week_day_other_month_description">%1$s, %2$d de %3$s</string>
+    <string name="week_mark_has_activities">tem atividades</string>
+    <string name="week_mark_today">hoje</string>
+    <string name="tasks_today">Hoje, %1$s</string>
+    <string name="tasks_title">Tarefas</string>
+    <string name="tasks_filter_pending">Pendentes</string>
+    <string name="tasks_filter_done">Concluídas</string>
+    <string name="tasks_filter_all">Todas</string>
+    <string name="tasks_empty_pending_title">Nada pendente</string>
+    <string name="tasks_empty_pending_message">Tudo feito por hoje. Você pode criar uma nova atividade.</string>
+    <string name="tasks_empty_done_title">Nada concluído ainda</string>
+    <string name="tasks_empty_done_message">As atividades que você marcar aparecem aqui.</string>
+
+    <!-- CAA -->
+
+    <!-- Perfil -->
+    <string name="profile_edit">Editar perfil</string>
+    <string name="profile_on_this_device">Neste aparelho, sem conta</string>
+    <string name="profile_account_label">Conta conectada</string>
+    <string name="profile_no_name">Sem nome</string>
+    <string name="profile_personal">Dados pessoais</string>
+    <string name="profile_communication">Preferências de comunicação</string>
+    <string name="profile_accessibility">Configurações de acessibilidade</string>
+    <string name="profile_caregivers">Responsáveis vinculados</string>
+    <string name="profile_caregivers_description">Quem ajuda você. Digite aqui o código que a pessoa gerou</string>
+    <string name="profile_care_recipients_description">Quem você ajuda. Gere aqui um código para a pessoa</string>
+    <string name="profile_settings">Configurações</string>
+    <string name="profile_name_saved">Nome salvo</string>
+    <string name="profile_save">Salvar</string>
+    <string name="profile_name_label">Nome</string>
+    <string name="profile_local_title">Seus dados estão só neste aparelho</string>
+    <string name="profile_local_message">O ori funciona sem internet e sem conta. Com uma conta, você tem cópia na nuvem, usa em outros aparelhos e pode ter responsáveis.</string>
+    <string name="profile_connect">Entrar ou criar conta</string>
+    <string name="profile_move_waiting">Seus dados deste aparelho vão para a conta quando a conexão voltar.</string>
+    <string name="profile_move_partial">Alguns itens não couberam nos limites da conta e continuam neste aparelho.</string>
+    <string name="profile_move_retry">Tentar de novo</string>
+
+    <!-- Configurações -->
+    <string name="settings_title">Configurações</string>
+    <string name="settings_accessibility_description">Fonte, animações e leitura</string>
+    <string name="settings_theme">Tema</string>
+    <string name="settings_theme_description">Claro, escuro ou igual ao sistema</string>
+    <string name="settings_communication_description">Símbolos, rótulos e o que um toque faz</string>
+    <string name="settings_screen">Tela e início</string>
+    <string name="settings_screen_description">Espaçamento, listas e a primeira tela</string>
+    <string name="settings_privacy">Privacidade</string>
+    <string name="settings_privacy_description">Dados e segurança</string>
+    <string name="settings_about">Sobre o ori</string>
+    <string name="settings_about_version">Versão %1$s</string>
+    <string name="start_area_home">Início</string>
+    <string name="privacy_where_title">Onde ficam os seus dados</string>
+    <string name="privacy_where_local">Sem conta, tudo fica guardado só neste aparelho. Nada é enviado pela internet.</string>
+    <string name="privacy_where_account">Com conta, rotina, pranchas, fotos e mensagens salvas ficam na sua conta, com uma cópia neste aparelho para funcionar sem internet.</string>
+    <string name="privacy_device_only">A contagem de uso da comunicação fica sempre só neste aparelho. O que você falou nunca é registrado.</string>
+    <string name="privacy_caregivers">Um responsável só vê o que você permitir, e você pode encerrar o vínculo a qualquer momento. Mensagens salvas nunca são compartilhadas.</string>
+    <string name="privacy_erase">Apagar dados deste aparelho</string>
+    <string name="privacy_erase_title">Apagar tudo deste aparelho?</string>
+    <string name="privacy_erase_message">Sua rotina, suas pranchas e suas mensagens salvas neste aparelho serão apagadas. Isso não pode ser desfeito.</string>
+    <string name="about_description">O ori ajuda a organizar o dia, comunicar e cuidar, com ou sem internet.</string>
+
+    <!-- Relatórios -->
+    <string name="reports_title">Relatórios</string>
+    <string name="reports_this_week">Esta semana</string>
+    <string name="reports_this_month">Este mês</string>
+    <string name="reports_summary">Resumo geral</string>
+    <string name="reports_tasks_done">Atividades concluídas</string>
+    <string name="reports_completion">Do planejado</string>
+    <string name="reports_aac_usage">Vezes que se comunicou</string>
+    <string name="reports_aac_usage_note">A comunicação é contada só neste aparelho: falar, mostrar a frase ou tocar numa frase pronta.</string>
+    <string name="reports_percent">%1$d%%</string>
+    <string name="reports_daily">Desempenho diário</string>
+    <string name="reports_chart_description">Gráfico do percentual de atividades concluídas por dia. A lista detalhada mostra os mesmos valores.</string>
+    <string name="reports_details_show">Ver relatórios detalhados</string>
+    <string name="reports_details_hide">Esconder detalhes</string>
+    <plurals name="reports_day_line">
+        <item quantity="one">%1$d de %2$d concluída</item>
+        <item quantity="many">%1$d de %2$d concluídas</item>
+        <item quantity="other">%1$d de %2$d concluídas</item>
+    </plurals>
+    <string name="reports_no_data_title">Ainda não há dados</string>
+    <string name="reports_no_data_message">Quando houver atividades neste período, o resumo aparece aqui.</string>
+
+    <!-- Mídia -->
 </resources>

@@ -13,10 +13,6 @@ class HomeViewModel @Inject constructor() : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    fun onSelectResponsavelMode(isResponsavel: Boolean) {
-        _uiState.update { it.copy(isResponsavelSelected = isResponsavel) }
-    }
-
     fun onTimerFinished() {
         _uiState.update { it.copy(showOptions = true) }
     }

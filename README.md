@@ -77,6 +77,10 @@ O aplicativo é desenvolvido utilizando **Kotlin** e **Jetpack Compose**, seguin
 
 A camada de apresentação organiza as telas a partir de **estados de interface e ViewModels**, mantendo a lógica de apresentação separada dos componentes visuais sempre que possível.
 
+As camadas de apresentação (`ui`), regras (`domain`) e infraestrutura (`data`) são separadas por pacotes, com injeção de dependências pelo **Hilt**. A explicação completa, com diagramas, está em [docs/arquitetura.md](docs/arquitetura.md).
+
+A interface usa um sistema visual próprio (cores, tipografia e componentes do ORI) e layouts que se adaptam ao espaço da janela: celulares, tablets, dobráveis, orientação horizontal e janelas redimensionadas. Detalhes em [docs/design-system.md](docs/design-system.md).
+
 A autenticação dos usuários é realizada através do **Firebase Authentication**, utilizando o identificador `firebaseUid` como referência externa da conta.
 
 A aplicação evita manter credenciais sensíveis diretamente no banco de dados, delegando o gerenciamento de autenticação ao Firebase.
@@ -92,22 +96,28 @@ A estrutura de permissões e vínculos entre usuários é tratada separadamente 
 
 ## Funcionalidades
 
-### Implementado
+| Funcionalidade | Situação |
+|---|---|
+| Abertura com escolha entre responsável e usuário | Implementado, sem testes automatizados |
+| Cadastro com e-mail e senha | Implementado e parcialmente testado |
+| Login com e-mail e senha | Implementado e parcialmente testado |
+| Sessão restaurada ao abrir o app e saída da conta | Implementado e parcialmente testado |
+| Perfil com nome (uma só conta; o vínculo decide quem acompanha quem) | Implementado e parcialmente testado |
+| Regras de autorização no Firestore | Implementado, testado no emulador e publicado |
+| Convites no servidor (Cloud Functions) | Implementado e testado no emulador; **ainda não publicado** (exige plano Blaze) |
+| Rotina: consulta por dia, detalhes, criar, editar, excluir e concluir | Implementado e parcialmente testado (sem verificação em aparelho); ver [docs/funcionalidades/rotina.md](docs/funcionalidades/rotina.md) |
+| Vínculos: convite, permissões e encerramento | Implementado e parcialmente testado |
+| Recuperação de senha por e-mail | Implementado e parcialmente testado |
+| Exibição em letras maiúsculas ("Aa") | Implementado e parcialmente testado (salvo no aparelho) |
+| Preferências: texto, tema, simplificação, animações, espaçamento, listas e tela inicial | Implementado e parcialmente testado; ver [docs/funcionalidades/preferencias.md](docs/funcionalidades/preferencias.md) |
+| Layout adaptativo das telas de abertura, login e cadastro | Implementado e parcialmente testado (sem verificação em aparelho) |
+| Comunicação (CAA): pranchas, símbolos, fotos, frases associadas, montagem, voz, frases salvas, preferências e organização pelo responsável | Implementado e parcialmente testado (sem verificação em aparelho nem da voz real); ver [docs/funcionalidades/caa.md](docs/funcionalidades/caa.md) |
+| Continuar sem conta | Não implementado |
+| Aplicação web | Não implementado (template do Next.js) |
 
-* Autenticação de usuários;
-* Cadastro e acesso à conta;
-* Interface adaptada para acessibilidade;
-* Personalização da experiência do usuário;
-* Gerenciamento de perfil.
+**Uso sem conta e offline:** o app funciona sem login e sem internet; ao criar uma conta, os dados vão para ela. Veja [uso sem conta](docs/funcionalidades/uso-local.md).
 
-### Em desenvolvimento
-
-* Organização e acompanhamento da rotina;
-* Recursos de apoio à comunicação;
-* Gerenciamento de vínculos entre usuários;
-* Configurações avançadas de acessibilidade;
-* Refinamento do sistema de permissões;
-* Melhorias de experiência e usabilidade.
+Detalhes: [autenticação](docs/funcionalidades/autenticacao.md) e [perfis e permissões](docs/funcionalidades/perfis-e-permissoes.md).
 
 ---
 
@@ -140,9 +150,11 @@ O aplicativo utiliza o identificador fornecido pelo Firebase para relacionar a c
 
 ### Cloud Firestore
 
-Responsável pelo armazenamento dos dados relacionados aos usuários e às funcionalidades da aplicação.
+Guarda perfis (`users`), rotinas (`users/{uid}/routineTasks`) e vínculos (`careLinks`), separados das credenciais de autenticação. As regras de acesso ficam em `functions/firestore.rules` e são testadas no emulador (`functions/security-tests`). Elas estão publicadas no projeto `oriteam-ori`.
 
-Os dados da aplicação são mantidos separados das credenciais de autenticação, permitindo uma arquitetura mais organizada e evitando a implementação de mecanismos próprios para armazenamento e gerenciamento de senhas.
+### Cloud Functions
+
+Criam e aceitam convites de vínculo (`createCareInvitation` e `acceptCareInvitation`). Essas operações rodam no servidor porque dão acesso aos dados de outra pessoa.
 
 ---
 
@@ -166,29 +178,69 @@ cd ori
 
 ### Abra o projeto
 
-Abra a pasta do projeto no **Android Studio** e aguarde a sincronização do Gradle.
+Abra a pasta `android/` no **Android Studio** e aguarde a sincronização do Gradle.
 
 ### Execute
 
 Conecte um dispositivo Android ou inicie um emulador e execute o projeto pelo Android Studio.
 
-Também é possível gerar o APK pelo terminal:
+Também é possível gerar o APK pelo terminal, dentro da pasta `android/`:
 
 ```bash
-./gradlew assembleDebug
+cd android
+./gradlew assembleProdDebug
 ```
 
 No Windows PowerShell:
 
 ```powershell
-.\gradlew.bat assembleDebug
+cd android
+.\gradlew.bat assembleProdDebug
 ```
 
 O APK de debug será gerado em:
 
 ```text
-app/build/outputs/apk/debug/app-debug.apk
+android/app/build/outputs/apk/prod/debug/app-prod-debug.apk
 ```
+
+### Ambientes
+
+O app tem três variantes, escolhidas em **Build Variants** no Android Studio:
+
+| Variante | Firebase usado | Para quê |
+|---|---|---|
+| `prodDebug` (padrão) | Projeto real `oriteam-ori` | Uso normal e testes com dados reais |
+| `devDebug` | Emulator Suite local (`firebase emulators:start --project demo-ori` em `functions/`) | Desenvolver sem tocar em dados reais |
+| `stagingDebug` | Projeto de homologação (ainda não criado) | Desativada até existir `android/app/src/staging/google-services.json` |
+
+Detalhes em [docs/dados.md](docs/dados.md#8-ambientes).
+
+**Quando os arquivos do Gradle mudarem** (por exemplo, depois de atualizar o repositório), use
+**File → Sync Project with Gradle Files** antes de executar. Sem sincronizar, o Android Studio pode
+continuar instalando um APK antigo sem avisar. Dois sinais de que isso aconteceu:
+
+- **Build Variants** não mostra `prodDebug`;
+- o app abre, mas toda tela diz "Você não tem permissão para ver ou alterar estes dados", porque a
+  versão antiga faz consultas que as regras publicadas já recusam.
+
+Para conferir qual versão está no aparelho:
+
+```bash
+adb shell dumpsys package com.oriteam.ori | grep lastUpdateTime
+```
+
+### Verificações de qualidade
+
+Antes de abrir um pull request, rode dentro de `android/`:
+
+```bash
+./gradlew detekt testDevDebugUnitTest lintProdDebug assembleDevDebug assembleProdDebug
+```
+
+Para corrigir a formatação Kotlin automaticamente: `./gradlew detekt -PdetektAutoCorrect`.
+Os comandos da web e das Cloud Functions estão em [docs/arquitetura.md](docs/arquitetura.md#verificações).
+O GitHub Actions executa as mesmas verificações em cada pull request.
 
 ---
 
@@ -198,19 +250,20 @@ Uma visão simplificada da organização:
 
 ```text
 ori/
-├── app/
-│   └── src/
-│       └── main/
-│           ├── java/
-│           │   └── com/
-│           │       └── oriteam/
-│           ├── res/
-│           └── AndroidManifest.xml
-│
-├── gradle/
-├── build.gradle.kts
-├── settings.gradle.kts
-└── gradlew
+├── AGENTS.md                 # contrato de engenharia
+├── docs/                     # arquitetura e funcionalidades (português)
+├── android/                  # app Android
+│   ├── config/detekt/        # análise estática e formatação Kotlin
+│   └── app/src/
+│       ├── main/java/com/oriteam/ori/
+│       │   ├── domain/       # regras e contratos (Kotlin puro)
+│       │   ├── data/         # Firebase
+│       │   ├── di/           # módulos Hilt
+│       │   └── ui/           # telas, componentes, layouts adaptativos e tema
+│       └── test/             # testes unitários
+├── functions/                # Cloud Functions (TypeScript)
+├── web/                      # aplicação web (Next.js)
+└── .github/workflows/ci.yml  # integração contínua
 ```
 
 A organização interna é dividida por responsabilidades, mantendo componentes de interface, navegação, dados e lógica de negócio desacoplados sempre que possível.

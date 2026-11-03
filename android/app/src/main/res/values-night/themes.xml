@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.Ori" parent="android:Theme.Material.NoActionBar">
+        <!-- Same color as the dark background, so the app does not flash white while it opens. -->
+        <item name="android:windowBackground">#FF0C1824</item>
+    </style>
+</resources>

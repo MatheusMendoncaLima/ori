@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "oriteam-ori"
+    "default": "oriteam-ori",
+    "prod": "oriteam-ori",
+    "dev": "demo-ori"
   }
 }

@@ -32,26 +32,40 @@ val NunitoSansFontFamily = FontFamily(
     Font(googleFont = NunitoSansFont, fontProvider = fontProvider, weight = FontWeight.Bold)
 )
 
+private fun nunitoSans(weight: FontWeight, size: Int, lineHeight: Int? = null) = TextStyle(
+    fontFamily = NunitoSansFontFamily,
+    fontWeight = weight,
+    fontSize = size.sp,
+    lineHeight = (lineHeight ?: (size * LINE_HEIGHT_RATIO).toInt()).sp
+)
+
+/** Line height relative to font size; keeps multi-line text readable when it wraps or is enlarged. */
+private const val LINE_HEIGHT_RATIO = 1.4f
+
+/**
+ * Text roles used by every screen. Sizes are the ones of the original ORI screens, so
+ * migrating a `Text` to a role keeps its appearance. All sizes are in `sp` and follow
+ * the system font scale.
+ */
 val Typography = Typography(
-    displayLarge = TextStyle(
-        fontFamily = NunitoFontFamily,
-        fontWeight = FontWeight.Bold,
-        fontSize = 57.sp
-    ),
-    titleLarge = TextStyle(
-        fontFamily = NunitoSansFontFamily,
-        fontWeight = FontWeight.Bold,
-        fontSize = 22.sp
-    ),
-    bodyLarge = TextStyle(
-        fontFamily = NunitoSansFontFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 24.sp
-    ),
-    bodyMedium = TextStyle(
-        fontFamily = NunitoSansFontFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 14.sp
-    )
+    // Brand name on the onboarding page.
+    displayLarge = TextStyle(fontFamily = NunitoFontFamily, fontWeight = FontWeight.ExtraBold, fontSize = 82.sp),
+    // Brand name in the header of form screens.
+    displaySmall = TextStyle(fontFamily = NunitoFontFamily, fontWeight = FontWeight.Bold, fontSize = 28.sp),
+    // Screen titles: primary user (large) and caregiver (smaller, task-oriented).
+    headlineLarge = nunitoSans(FontWeight.Bold, size = 32),
+    headlineMedium = nunitoSans(FontWeight.Bold, size = 26),
+    headlineSmall = nunitoSans(FontWeight.Bold, size = 21),
+    titleLarge = nunitoSans(FontWeight.Bold, size = 19),
+    titleMedium = nunitoSans(FontWeight.Bold, size = 17),
+    titleSmall = nunitoSans(FontWeight.Bold, size = 15),
+    bodyLarge = nunitoSans(FontWeight.Medium, size = 15),
+    bodyMedium = nunitoSans(FontWeight.Normal, size = 14),
+    bodySmall = nunitoSans(FontWeight.Normal, size = 13),
+    // Buttons.
+    labelLarge = nunitoSans(FontWeight.Bold, size = 16),
+    // Field labels and text links.
+    labelMedium = nunitoSans(FontWeight.Bold, size = 14),
+    // Feedback messages, slogan and small badges.
+    labelSmall = nunitoSans(FontWeight.SemiBold, size = 13)
 )

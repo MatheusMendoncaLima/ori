@@ -1,0 +1,9 @@
+.next
+out
+build
+node_modules
+package-lock.json
+next-env.d.ts
+firebase-debug.log
+AGENTS.md
+CLAUDE.md

@@ -1,0 +1,472 @@
+rules_version = '2';
+
+// ORI authorization rules. Identity comes from Firebase Authentication (request.auth);
+// authorization comes from data stored here: having a profile, and care links. There is one
+// kind of account: anyone may have a routine, support someone and be supported.
+// Everything not explicitly allowed below is denied.
+//
+// Data model (see docs/funcionalidades/perfis-e-permissoes.md):
+//   users/{uid}                          profile: displayName, createdAt (older ones also have role)
+//   users/{uid}/routineTasks/{taskId}    routine of the person
+//   users/{uid}/routineSeries/{seriesId} activities that repeat: the rule, not one copy per day
+//   users/{uid}/photos/{photoId}         photos of symbols and of the profile, as bytes
+//   users/{uid}/settings/preferences     preferences that follow the account
+//   users/{uid}/aacBoards/{boardId}      communication boards (and their /symbols)
+//   users/{uid}/aacSavedMessages/{id}    saved messages, private to the person
+//   careLinks/{caregiverUid_primaryUid}  link between a caregiver and a primary user
+//   invitations/{code}                   server only (Cloud Functions)
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Identity ----------
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isCaller(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ---------- Profile ----------
+
+    function hasProfile(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid));
+    }
+
+    // An authenticated account without a profile has no access to app data.
+    function isPrimaryUserOwner(ownerUid) {
+      return isCaller(ownerUid) && hasProfile(ownerUid);
+    }
+
+    // ---------- Care links ----------
+
+    function linkPath(caregiverUid, primaryUserUid) {
+      return /databases/$(database)/documents/careLinks/$(caregiverUid + '_' + primaryUserUid);
+    }
+
+    function isActiveLink(caregiverUid, primaryUserUid) {
+      return exists(linkPath(caregiverUid, primaryUserUid))
+        && get(linkPath(caregiverUid, primaryUserUid)).data.status == 'active';
+    }
+
+    // Someone acts on another person's data only with an active link that grants the
+    // specific permission. A revoked link or a missing permission denies access.
+    function caregiverHasPermission(primaryUserUid, permission) {
+      return isSignedIn()
+        && hasProfile(request.auth.uid)
+        && isActiveLink(request.auth.uid, primaryUserUid)
+        && get(linkPath(request.auth.uid, primaryUserUid)).data.permissions[permission] == true;
+    }
+
+    function isLinkedWith(uid) {
+      return isSignedIn()
+        && (isActiveLink(request.auth.uid, uid) || isActiveLink(uid, request.auth.uid));
+    }
+
+    // ---------- Validation ----------
+
+    function isValidName(name) {
+      return name is string && name.size() > 0 && name.size() <= 100;
+    }
+
+    // Only the name: there is one kind of account, so a new profile has no role.
+    function isValidNewProfile(data) {
+      return data.keys().hasOnly(['displayName', 'createdAt'])
+        && isValidName(data.displayName)
+        && data.createdAt == request.time;
+    }
+
+    function isValidDate(value) {
+      return value is string && value.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    function isValidTime(value) {
+      return value == null || (value is string && value.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$'));
+    }
+
+    // Shape of an activity. Every field is required (some may be null) so queries and
+    // edits never meet half-filled documents.
+    function isValidTask(data) {
+      return data.keys().hasAll([
+          'title', 'date', 'scheduledTime', 'description', 'status', 'ownerCanComplete',
+          'isDone', 'completedAt', 'completedBy', 'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'title', 'date', 'scheduledTime', 'description', 'status', 'ownerCanComplete',
+          'isDone', 'completedAt', 'completedBy', 'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 200
+        && isValidDate(data.date)
+        && isValidTime(data.scheduledTime)
+        && (data.description == null
+            || (data.description is string && data.description.size() <= 500))
+        && data.status in ['active', 'hidden_from_caregiver', 'archived']
+        && data.ownerCanComplete is bool
+        && data.isDone is bool
+        && data.createdBy is string;
+    }
+
+    // Completion fields describe who finished the task and when; they must be truthful.
+    function isValidCompletion(data) {
+      return (data.isDone == true
+          && data.completedBy == request.auth.uid
+          && data.completedAt == request.time)
+        || (data.isDone == false
+          && data.completedBy == null
+          && data.completedAt == null);
+    }
+
+    // An edit either keeps the completion as it was or records a new, truthful one.
+    function keepsOrSetsValidCompletion() {
+      return (request.resource.data.isDone == resource.data.isDone
+          && request.resource.data.completedBy == resource.data.completedBy
+          && request.resource.data.completedAt == resource.data.completedAt)
+        || isValidCompletion(request.resource.data);
+    }
+
+    function changesOnly(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+
+    // ---------- Rules ----------
+
+    match /users/{uid} {
+      // Own profile, or the profile of someone actively linked (to show their name).
+      allow read: if isCaller(uid) || isLinkedWith(uid);
+
+      // A profile is created once, by its owner. Older profiles may still have a role; nothing reads it.
+      allow create: if isCaller(uid) && isValidNewProfile(request.resource.data);
+
+      // Only the display name can change.
+      allow update: if isCaller(uid)
+        && changesOnly(['displayName'])
+        && isValidName(request.resource.data.displayName);
+
+      // Account deletion will be a server operation that also removes related data.
+      allow delete: if false;
+
+      match /routineTasks/{taskId} {
+        // The owner reads everything; a caregiver reads only active tasks
+        // (queries must filter status == 'active').
+        function canReadTask() {
+          return isPrimaryUserOwner(uid)
+            || (caregiverHasPermission(uid, 'viewRoutines') && resource.data.status == 'active');
+        }
+
+        function newTask() {
+          return request.resource.data;
+        }
+
+        // A new activity starts not done, authored by the caller, at server time.
+        function isValidNewTask() {
+          return isValidTask(newTask())
+            && newTask().createdBy == request.auth.uid
+            && newTask().createdAt == request.time
+            && newTask().updatedAt == request.time
+            && newTask().isDone == false
+            && newTask().completedBy == null
+            && newTask().completedAt == null;
+        }
+
+        // Every edit keeps authorship and creation time and stamps the server time.
+        function isValidEdit() {
+          return isValidTask(newTask())
+            && newTask().createdBy == resource.data.createdBy
+            && newTask().createdAt == resource.data.createdAt
+            && newTask().updatedAt == request.time
+            && keepsOrSetsValidCompletion();
+        }
+
+        // Activities the primary user created are theirs; they always may complete them.
+        function isOwnActivityOfOwner() {
+          return isPrimaryUserOwner(uid) && resource.data.createdBy == uid;
+        }
+
+        function caregiverManagesVisibleTask() {
+          return caregiverHasPermission(uid, 'manageRoutines')
+            && resource.data.status != 'hidden_from_caregiver';
+        }
+
+        allow get: if canReadTask();
+        // Lists must be bounded: protects cost and memory against unlimited queries.
+        allow list: if canReadTask() && request.query.limit <= 100;
+
+        allow create: if isValidNewTask() && (
+            // Primary user: own activities, always self-completable, may be hidden from the caregiver.
+            (isPrimaryUserOwner(uid) && newTask().ownerCanComplete == true)
+            // Caregiver with permission: visible activities only (never hidden).
+            || (caregiverHasPermission(uid, 'manageRoutines')
+              && newTask().status in ['active', 'archived'])
+          );
+
+        allow update: if
+          // Primary user edits their own activities; they stay self-completable.
+          (isOwnActivityOfOwner()
+            && isValidEdit()
+            && newTask().ownerCanComplete == true)
+          // Caregiver with permission edits visible activities and cannot hide them.
+          || (caregiverManagesVisibleTask()
+            && isValidEdit()
+            && newTask().status != 'hidden_from_caregiver')
+          // Primary user marks completion of caregiver activities allowed for self-completion.
+          || (isPrimaryUserOwner(uid)
+            && resource.data.ownerCanComplete == true
+            && changesOnly(['isDone', 'completedAt', 'completedBy', 'updatedAt'])
+            && newTask().updatedAt == request.time
+            && isValidCompletion(newTask()));
+
+        // Deleting follows the same ownership as editing.
+        allow delete: if isOwnActivityOfOwner() || caregiverManagesVisibleTask();
+      }
+
+      // ---------- Repeating activities ----------
+
+      // The same visibility and ownership as an activity. A day that was marked as done is a normal
+      // document in routineTasks, so completion never lives here.
+      match /routineSeries/{seriesId} {
+        function canReadSeries() {
+          return isPrimaryUserOwner(uid)
+            || (caregiverHasPermission(uid, 'viewRoutines') && resource.data.status == 'active');
+        }
+
+        function isValidRepeat(value) {
+          return value is string
+            && value.matches('^(weekly:[1-7](,[1-7]){0,6}:[1-4]|last_day|last_business_day)$');
+        }
+
+        function isValidSeries(data) {
+          return data.keys().hasAll([
+              'title', 'date', 'scheduledTime', 'description', 'status', 'ownerCanComplete',
+              'repeat', 'skippedDates', 'createdBy', 'createdAt', 'updatedAt'
+            ])
+            && data.keys().hasOnly([
+              'title', 'date', 'scheduledTime', 'description', 'status', 'ownerCanComplete',
+              'repeat', 'skippedDates', 'createdBy', 'createdAt', 'updatedAt'
+            ])
+            && data.title is string && data.title.size() > 0 && data.title.size() <= 200
+            && isValidDate(data.date)
+            && isValidTime(data.scheduledTime)
+            && (data.description == null
+                || (data.description is string && data.description.size() <= 500))
+            && data.status in ['active', 'hidden_from_caregiver']
+            && data.ownerCanComplete is bool
+            && isValidRepeat(data.repeat)
+            && data.skippedDates is list && data.skippedDates.size() <= 400
+            && data.createdBy is string;
+        }
+
+        function isOwnSeriesOfOwner() {
+          return isPrimaryUserOwner(uid) && resource.data.createdBy == uid;
+        }
+
+        function caregiverManagesVisibleSeries() {
+          return caregiverHasPermission(uid, 'manageRoutines')
+            && resource.data.status != 'hidden_from_caregiver';
+        }
+
+        allow get: if canReadSeries();
+        allow list: if canReadSeries() && request.query.limit <= 50;
+
+        allow create: if isValidSeries(request.resource.data) && isNewAuthoredDoc() && (
+            (isPrimaryUserOwner(uid) && request.resource.data.ownerCanComplete == true)
+            || (caregiverHasPermission(uid, 'manageRoutines')
+              && request.resource.data.status == 'active')
+          );
+
+        allow update: if isValidSeries(request.resource.data) && keepsAuthorship() && (
+            (isOwnSeriesOfOwner() && request.resource.data.ownerCanComplete == true)
+            || (caregiverManagesVisibleSeries() && request.resource.data.status == 'active')
+          );
+
+        allow delete: if isOwnSeriesOfOwner() || caregiverManagesVisibleSeries();
+      }
+
+      // ---------- Photos ----------
+
+      // One document per photo, limited in size, because a photo costs storage and bandwidth. A
+      // caregiver who manages the boards sees the photos of symbols, never the picture of the profile.
+      match /photos/{photoId} {
+        function isValidPhoto(data) {
+          return photoId.matches('^[A-Za-z0-9-]{1,64}[.]jpg$')
+            && data.keys().hasAll(['data', 'updatedAt'])
+            && data.keys().hasOnly(['data', 'updatedAt'])
+            && data.data is bytes
+            && data.data.size() > 0
+            && data.data.size() <= 102400
+            && data.updatedAt == request.time;
+        }
+
+        allow get: if isPrimaryUserOwner(uid)
+          || (photoId != 'profile.jpg' && caregiverHasPermission(uid, 'manageCommunication'));
+        // Lists exist only so the app can count against its limit of 100 photos per person.
+        allow list: if isPrimaryUserOwner(uid) && request.query.limit <= 101;
+        allow create, update: if isPrimaryUserOwner(uid) && isValidPhoto(request.resource.data);
+        allow delete: if isPrimaryUserOwner(uid);
+      }
+
+      // ---------- Preferences ----------
+
+      // One document with the choices that follow the person between devices. It is personal:
+      // a care link never opens it, and only the known fields and values are accepted.
+      match /settings/{documentId} {
+        function isValidPreferences(data) {
+          return data.keys().hasAll(['textScale', 'theme', 'simplified', 'motion', 'updatedAt'])
+            && data.keys().hasOnly(['textScale', 'theme', 'simplified', 'motion', 'updatedAt'])
+            && data.textScale in ['normal', 'large', 'larger', 'largest']
+            && data.theme in ['system', 'light', 'dark']
+            && data.simplified is bool
+            && data.motion in ['system', 'expressive', 'subtle', 'reduced', 'off']
+            && data.updatedAt == request.time;
+        }
+
+        allow get: if isCaller(uid) && documentId == 'preferences';
+        allow create, update: if isCaller(uid)
+          && documentId == 'preferences'
+          && isValidPreferences(request.resource.data);
+      }
+
+      // ---------- Communication (AAC) ----------
+
+      // The primary user manages their own boards; a caregiver needs 'manageCommunication'.
+      function canManageAac() {
+        return isPrimaryUserOwner(uid) || caregiverHasPermission(uid, 'manageCommunication');
+      }
+
+      // A new document records the caller as author and the server time.
+      function isNewAuthoredDoc() {
+        return request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+      }
+
+      // An edit keeps authorship and creation time and stamps the server time.
+      function keepsAuthorship() {
+        return request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time;
+      }
+
+      function isValidPosition(value) {
+        return value is int && value >= 0 && value < 1000;
+      }
+
+      match /aacBoards/{boardId} {
+        function isValidBoard(data) {
+          return data.keys().hasAll(['name', 'position', 'createdBy', 'createdAt', 'updatedAt'])
+            && data.keys().hasOnly(['name', 'position', 'createdBy', 'createdAt', 'updatedAt'])
+            && data.name is string && data.name.size() > 0 && data.name.size() <= 40
+            && isValidPosition(data.position)
+            && data.createdBy is string;
+        }
+
+        allow get: if canManageAac();
+        allow list: if canManageAac() && request.query.limit <= 30;
+        allow create: if canManageAac() && isValidBoard(request.resource.data) && isNewAuthoredDoc();
+        allow update: if canManageAac() && isValidBoard(request.resource.data) && keepsAuthorship();
+        allow delete: if canManageAac();
+
+        match /symbols/{symbolId} {
+          // Only a short reference is stored, never image bytes: an emoji or a device photo name.
+          function isValidImage(value) {
+            return value == null
+              || (value is string && value.size() <= 80
+                && (value.matches('^emoji:.+$')
+                  || value.matches('^device:[A-Za-z0-9-]{1,64}[.]jpg$')));
+          }
+
+          function isValidSymbol(data) {
+            return data.keys().hasAll([
+                'label', 'phrase', 'image', 'position', 'createdBy', 'createdAt', 'updatedAt'
+              ])
+              && data.keys().hasOnly([
+                'label', 'phrase', 'image', 'position', 'createdBy', 'createdAt', 'updatedAt'
+              ])
+              && data.label is string && data.label.size() > 0 && data.label.size() <= 40
+              && (data.phrase == null
+                || (data.phrase is string && data.phrase.size() > 0 && data.phrase.size() <= 200))
+              && isValidImage(data.image)
+              && isValidPosition(data.position)
+              && data.createdBy is string;
+          }
+
+          // Device photos exist only on the primary user's device, so only they may set a new one.
+          // A caregiver may keep the photo that is already there.
+          function setsNoForeignPhoto() {
+            return isPrimaryUserOwner(uid)
+              || request.resource.data.image == null
+              || !request.resource.data.image.matches('^device:.*$')
+              || (resource != null && request.resource.data.image == resource.data.image);
+          }
+
+          allow get: if canManageAac();
+          allow list: if canManageAac() && request.query.limit <= 60;
+          // A symbol always belongs to an existing board, also when both are created in one batch.
+          allow create: if canManageAac()
+            && isValidSymbol(request.resource.data)
+            && isNewAuthoredDoc()
+            && setsNoForeignPhoto()
+            && existsAfter(/databases/$(database)/documents/users/$(uid)/aacBoards/$(boardId));
+          allow update: if canManageAac()
+            && isValidSymbol(request.resource.data)
+            && keepsAuthorship()
+            && setsNoForeignPhoto();
+          allow delete: if canManageAac();
+        }
+      }
+
+      // What the person said or wants to say is theirs alone: no caregiver permission opens it.
+      match /aacSavedMessages/{messageId} {
+        allow get, delete: if isPrimaryUserOwner(uid);
+        allow list: if isPrimaryUserOwner(uid) && request.query.limit <= 50;
+        allow create: if isPrimaryUserOwner(uid)
+          && request.resource.data.keys().hasAll(['text', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['text', 'createdAt'])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 500
+          && request.resource.data.createdAt == request.time;
+        allow update: if false;
+      }
+    }
+
+    match /careLinks/{linkId} {
+      // Only the two people in the link can see it.
+      function isLinkMember() {
+        return isSignedIn()
+          && (resource.data.caregiverUid == request.auth.uid
+            || resource.data.primaryUserUid == request.auth.uid);
+      }
+
+      allow get: if isLinkMember();
+      allow list: if isLinkMember() && request.query.limit <= 50;
+
+      // Links are created only by the acceptInvitation Cloud Function, which validates
+      // the invitation code. Clients can never create or delete them.
+      allow create, delete: if false;
+
+      allow update: if isSignedIn() && resource.data.status == 'active' && (
+          // Either person can revoke the link. Revocation is final.
+          ((request.auth.uid == resource.data.caregiverUid
+              || request.auth.uid == resource.data.primaryUserUid)
+            && changesOnly(['status', 'revokedAt'])
+            && request.resource.data.status == 'revoked'
+            && request.resource.data.revokedAt == request.time)
+          // Only the primary user decides what the caregiver may do (autonomy first).
+          || (request.auth.uid == resource.data.primaryUserUid
+            && changesOnly(['permissions'])
+            && request.resource.data.permissions.keys()
+              .hasOnly(['viewRoutines', 'manageRoutines', 'manageCommunication'])
+            && request.resource.data.permissions.viewRoutines is bool
+            && request.resource.data.permissions.manageRoutines is bool
+            // Links created before this permission existed may not have it.
+            && request.resource.data.permissions.get('manageCommunication', false) is bool)
+        );
+    }
+
+    // Invitation codes are read and written only by Cloud Functions (Admin SDK).
+    match /invitations/{code} {
+      allow read, write: if false;
+    }
+  }
+}

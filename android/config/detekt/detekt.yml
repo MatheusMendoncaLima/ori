@@ -1,0 +1,46 @@
+# Only the deviations from the detekt defaults live here (buildUponDefaultConfig = true).
+# Each override explains why the default does not fit Jetpack Compose code.
+
+naming:
+  FunctionNaming:
+    # Composable functions that emit UI use PascalCase (official Compose guideline).
+    ignoreAnnotated: ['Composable']
+  TopLevelPropertyNaming:
+    # Design tokens such as `OriDarkBlue` follow the Compose theming convention.
+    propertyPattern: '[A-Za-z][_A-Za-z0-9]*'
+
+complexity:
+  LongParameterList:
+    # Stateless screens receive one lambda per user action by design.
+    ignoreAnnotated: ['Composable']
+    # Builders with defaults (test fixtures, data drafts) are called with named arguments.
+    ignoreDefaultParameters: true
+  TooManyFunctions:
+    # ViewModels expose one public function per user action; private helpers are the
+    # decomposition we want, so they are not counted.
+    ignorePrivate: true
+  LongMethod:
+    # Layout code is declarative; file size is reviewed via AGENTS.md (250–300 lines) instead.
+    ignoreAnnotated: ['Composable']
+
+style:
+  ForbiddenImport:
+    active: true
+    # Text goes through ui/components/text/Text.kt, which applies the "Aa" choice everywhere.
+    imports: ['androidx.compose.material3.Text']
+  MagicNumber:
+    # Dimensions, durations and colors inside layouts are design values, not business rules.
+    ignoreAnnotated: ['Composable']
+    ignorePropertyDeclaration: true
+  ReturnCount:
+    # AGENTS.md section 4 recommends early returns (guard clauses) for simple conditions.
+    excludeGuardClauses: true
+  UnusedPrivateMember:
+    ignoreAnnotated: ['Preview', 'OriPreview', 'OriPreviewDark']
+
+formatting:
+  # Trailing commas are optional; enforcing them would rewrite every file without a functional gain.
+  TrailingCommaOnCallSite:
+    active: false
+  TrailingCommaOnDeclarationSite:
+    active: false

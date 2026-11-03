@@ -2,7 +2,12 @@ package com.oriteam.ori.ui.app.screens.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.oriteam.ori.data.repository.AuthRepository
+import com.oriteam.ori.R
+import com.oriteam.ori.domain.auth.AuthRepository
+import com.oriteam.ori.domain.auth.AuthResult
+import com.oriteam.ori.domain.auth.validatePasswordReset
+import com.oriteam.ori.domain.auth.validateSignIn
+import com.oriteam.ori.ui.app.screens.auth.messageRes
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +26,7 @@ class LoginViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
+    /** One-time navigation requests. A Channel delivers each event once, unlike state. */
     sealed interface Event {
         data object LoginSuccess : Event
         data object NavigateToRegister : Event
@@ -29,71 +35,62 @@ class LoginViewModel @Inject constructor(
     private val _events = Channel<Event>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
-    fun setResponsavelMode(isResponsavel: Boolean) {
-        _uiState.update { it.copy(isResponsavelMode = isResponsavel) }
-    }
-
     fun onEmailInputChange(value: String) {
-        _uiState.update { it.copy(emailInputValue = value, errorMessage = null) }
+        _uiState.update { it.copy(emailInputValue = value, errorMessageRes = null) }
     }
 
     fun onPasswordInputChange(value: String) {
-        _uiState.update { it.copy(passwordInputValue = value, errorMessage = null) }
+        _uiState.update { it.copy(passwordInputValue = value, errorMessageRes = null) }
     }
 
     fun onTogglePasswordVisibility() {
         _uiState.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
     }
 
-    fun onToggleUppercase() {
-        _uiState.update { it.copy(isUppercase = !it.isUppercase) }
-    }
-
     fun onLoginClick() {
         val state = _uiState.value
+        if (state.isLoading) return
 
-        if (state.emailInputValue.isBlank() || state.passwordInputValue.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Preencha o e-mail e a senha") }
+        val email = state.emailInputValue.trim()
+        val validationError = validateSignIn(email, state.passwordInputValue)
+        if (validationError != null) {
+            _uiState.update { it.copy(errorMessageRes = validationError.messageRes(), successMessageRes = null) }
             return
         }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            try {
-                authRepository.login(
-                    email = state.emailInputValue,
-                    password = state.passwordInputValue
-                )
-                _uiState.update { it.copy(isLoading = false) }
-                _events.send(Event.LoginSuccess)
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(isLoading = false, errorMessage = e.message ?: "Erro ao realizar login")
+            _uiState.update { it.copy(isLoading = true, errorMessageRes = null, successMessageRes = null) }
+            when (val result = authRepository.signIn(email, state.passwordInputValue)) {
+                AuthResult.Success -> {
+                    _uiState.update { it.copy(isLoading = false) }
+                    _events.send(Event.LoginSuccess)
+                }
+                is AuthResult.Failure -> _uiState.update {
+                    it.copy(isLoading = false, errorMessageRes = result.error.messageRes())
                 }
             }
         }
     }
 
     fun onForgotPasswordClick() {
-        val email = _uiState.value.emailInputValue.trim()
-        if (email.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Informe o e-mail para redefinir a senha") }
+        val state = _uiState.value
+        if (state.isLoading) return
+
+        val email = state.emailInputValue.trim()
+        val validationError = validatePasswordReset(email)
+        if (validationError != null) {
+            _uiState.update { it.copy(errorMessageRes = validationError.messageRes(), successMessageRes = null) }
             return
         }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null, successMessage = null) }
-            try {
-                authRepository.sendPasswordResetEmail(email)
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        successMessage = "E-mail de redefinição enviado com sucesso!"
-                    )
+            _uiState.update { it.copy(isLoading = true, errorMessageRes = null, successMessageRes = null) }
+            when (val result = authRepository.sendPasswordResetEmail(email)) {
+                AuthResult.Success -> _uiState.update {
+                    it.copy(isLoading = false, successMessageRes = R.string.password_reset_requested)
                 }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(isLoading = false, errorMessage = e.message ?: "Erro ao enviar e-mail")
+                is AuthResult.Failure -> _uiState.update {
+                    it.copy(isLoading = false, errorMessageRes = result.error.messageRes())
                 }
             }
         }
