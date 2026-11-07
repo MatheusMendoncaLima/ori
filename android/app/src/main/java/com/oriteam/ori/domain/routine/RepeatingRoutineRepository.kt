@@ -147,7 +147,8 @@ class RepeatingRoutineRepository(
 
     /**
      * Removing all the days keeps the ones already marked as done, because they are the history in the
-     * reports. Only the document of the day being looked at goes away with the series.
+     * reports. Only the document of the day being looked at goes away with the series. The other days that
+     * have a document but are not done stay stored, and [merged] leaves them out.
      */
     override suspend fun delete(ownerUid: String, task: RoutineTask, scope: DeleteScope): DataResult<WriteStatus> {
         val repeat = task.repeat ?: return tasks.deleteActivity(ownerUid, task.id)
@@ -163,9 +164,16 @@ class RepeatingRoutineRepository(
 
     private fun merged(stored: List<RoutineTask>, rules: List<RoutineSeries>, date: LocalDate): List<RoutineTask> {
         val byId = rules.associateBy { it.id }
-        val days = stored.map { task ->
-            // What is edited in the series shows on every day; only completion belongs to the day.
-            seriesIdOf(task.id)?.let(byId::get)?.occurrenceOn(date, task.isDone, stored = true) ?: task
+        val days = stored.mapNotNull { task ->
+            val seriesId = seriesIdOf(task.id) ?: return@mapNotNull task
+            when {
+                // What is edited in the series shows on every day; only completion belongs to the day.
+                seriesId in byId -> byId.getValue(seriesId).occurrenceOn(date, task.isDone, stored = true)
+                // The series is gone (or not visible to this viewer): a day marked as done stays as history,
+                // and one that was marked and unmarked is not an activity of its own.
+                task.isDone -> task
+                else -> null
+            }
         }
         val storedIds = stored.mapTo(mutableSetOf()) { it.id }
         return days.filterNot { it.repeat != null && it.date in byId.getValue(it.repeat.seriesId).skippedDates } +

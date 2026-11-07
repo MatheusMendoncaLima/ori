@@ -124,6 +124,23 @@ class RepeatingRoutineRepositoryTest {
     }
 
     @Test
+    fun `after a series is deleted only its days marked as done stay, as history`() = runTest {
+        rules.series.value = DataResult.Success(emptyList())
+        val plain = everyMonday().occurrenceOn(monday).copy(id = "plain", repeat = null)
+        // Marked and then unmarked: it has a document, but it is not history.
+        val unmarked = everyMonday().occurrenceOn(monday).copy(repeat = null)
+        val done = everyMonday().copy(id = "s2").occurrenceOn(monday).copy(isDone = true, repeat = null)
+        tasks.routine.value = DataResult.Success(RoutineSnapshot(listOf(plain, unmarked, done), false, false))
+        tasks.dayResult = DataResult.Success(listOf(plain, unmarked, done))
+
+        val day = (repository.observeDay(OWNER, RoutineViewer.Owner, monday).first() as DataResult.Success).value.tasks
+        val days = (repository.getDays(OWNER, RoutineViewer.Owner, listOf(monday)) as DataResult.Success).value
+
+        assertEquals(setOf("plain", "s2__2026-11-02"), day.map { it.id }.toSet())
+        assertEquals(setOf("plain", "s2__2026-11-02"), days.getValue(monday).map { it.id }.toSet())
+    }
+
+    @Test
     fun `when the rules cannot be read the day still shows, with a notice`() = runTest {
         rules.series.value = DataResult.Failure(DataError.PERMISSION_DENIED)
         tasks.routine.value = DataResult.Success(RoutineSnapshot(emptyList(), false, false))

@@ -311,7 +311,7 @@ flowchart LR
 |---|---|
 | Marcar um dia como feito pela primeira vez | Cria um documento em `routineTasks` com o id `serie__2026-11-02`, depois marca. É o id que impede que o dia apareça duas vezes |
 | Editar | Muda a atividade em todos os dias. Só o "feito" pertence ao dia. O formulário abre no primeiro dia da repetição |
-| Excluir | Pergunta: **Só este dia** (entra em `skippedDates`) ou **Todos os dias** (apaga a regra; dias já marcados continuam nos relatórios) |
+| Excluir | Pergunta: **Só este dia** (entra em `skippedDates`) ou **Todos os dias** (apaga a regra; dias concluídos continuam nos relatórios, e um dia marcado e depois desmarcado não aparece mais) |
 | Ligar ou desligar a repetição | Grava primeiro a forma nova, depois apaga a antiga. Se a segunda escrita falhar, nada se perde |
 | As regras não puderam ser lidas | O dia aparece com o que tem e um aviso, em vez de sumir |
 
@@ -321,7 +321,9 @@ flowchart LR
 - No máximo 50 repetições por pessoa e 400 dias pulados por repetição.
 - "Dia útil" é de segunda a sexta: o app não conhece feriados.
 - Não há data de fim nem repetição mensal por dia do mês.
-- Excluir "todos os dias" mantém os dias já marcados, inclusive futuros, se alguém marcou um dia futuro.
+- Excluir "todos os dias" mantém os dias concluídos, inclusive futuros, se alguém marcou um dia futuro.
+  - Um dia marcado e depois desmarcado continua guardado, mas não aparece: `RepeatingRoutineRepository.merged` só mostra, de uma série que não existe mais, os dias concluídos.
+  - O mesmo vale para quem acompanha quando a série foi escondida dele depois.
 
 **Arrastar a semana:** `WeekStrip` usa um `HorizontalPager`. Arrastar muda a semana e mantém o dia da semana; as setas continuam para quem não consegue arrastar.
 

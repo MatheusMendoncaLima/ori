@@ -30,15 +30,6 @@ As regras negam por padrão, e cada coleção tem dono e limites.
 
 ## 1. Falhas de comportamento
 
-### R4. Excluir "todos os dias" pode deixar dias soltos (média-baixa)
-
-- **Onde:** `domain/routine/RepeatingRoutineRepository.kt:149` (`delete`).
-- **O que acontece:**
-  - O comentário diz que só os dias concluídos ficam, como histórico.
-  - Mas um dia marcado e depois desmarcado também tem documento, com `isDone = false`.
-  - Depois da exclusão, esse dia aparece como uma atividade comum, não concluída, no dia dele.
-- **Correção:** ao excluir a série, apagar os documentos de dias que não estão concluídos, ou ignorar no `merged` os dias de uma série que não existe mais e não foram concluídos.
-
 ### R5. Excluir uma série cujo dia foi marcado por quem acompanha (média-baixa)
 
 - **Onde:** `RepeatingRoutineRepository.kt:149` e `firestore.rules` (`routineTasks`, `delete`).
@@ -192,7 +183,7 @@ Os mais importantes são:
 ## 7. Ordem sugerida
 
 1. **P1**: custo de leitura, que cresce com o uso.
-2. **R4**, **R5**: dados que ficam errados.
+2. **R5**: erro mostrado depois de uma exclusão que funcionou.
 3. **A1**, **R6**, **R7**, **R12**.
 4. As gambiarras G1–G7, que são rápidas e deixam o código honesto.
 5. **S1** e **S2**, junto com a publicação das Cloud Functions (plano Blaze).
@@ -241,3 +232,14 @@ Os mais importantes são:
   - Em `MoveLocalDataToAccountTest`, "repeating activities over the limit of the account stay here with their days, and the rest moves": antes, terminava em `WAITING_FOR_CONNECTION`.
   - Em `RepeatingRoutineRepositoryTest`, "creating again a repeating activity that is already there updates it, even at the limit": antes, era recusado.
 - **Não verificado:** no aparelho, nem com uma conta real cheia.
+
+### R4. Excluir "todos os dias" deixava dias soltos (média-baixa) — corrigida em 07/11/2026
+
+- **O que acontecia:** um dia marcado e depois desmarcado tem documento próprio, com `isDone = false`. Depois de excluir a série inteira, esse dia aparecia como uma atividade comum, não concluída, no dia dele.
+- **Correção:**
+  - Em `RepeatingRoutineRepository.merged`, que o dia, a semana, o mês e os relatórios usam, um documento de dia cuja série não existe mais só aparece se estiver concluído (histórico).
+  - Os outros continuam guardados, mas não aparecem; nenhuma gravação nova é feita, então também funciona sem conexão e em todos os aparelhos.
+  - O mesmo vale para quem acompanha, quando a série foi escondida dele depois de um dia ter sido marcado.
+- **Teste:** em `RepeatingRoutineRepositoryTest`, "after a series is deleted only its days marked as done stay, as history", no dia e na leitura de vários dias. Sem a correção, o dia desmarcado voltava.
+- **Não verificado:** no aparelho.
+- **Limitação:** os documentos desses dias continuam no banco. Ocupam pouco, mas contam no limite de 100 atividades por dia.
