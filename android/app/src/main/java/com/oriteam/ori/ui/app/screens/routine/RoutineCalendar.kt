@@ -7,8 +7,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
@@ -25,17 +28,17 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import com.oriteam.ori.R
 import com.oriteam.ori.domain.routine.daysOfWeekInOrder
 import com.oriteam.ori.domain.routine.startOfWeek
+import com.oriteam.ori.ui.components.text.LocalAppLocale
 import com.oriteam.ori.ui.components.text.Text
 import com.oriteam.ori.ui.theme.LocalOriAppearance
 import com.oriteam.ori.ui.theme.OriDimensions
+import com.oriteam.ori.ui.theme.OriSpacing
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.temporal.ChronoUnit
@@ -101,18 +104,25 @@ fun RoutineCalendar(
 @Composable
 private fun DragHandle(isMonthOpen: Boolean, onToggle: () -> Unit) {
     val label = stringResource(if (isMonthOpen) R.string.calendar_show_week else R.string.calendar_show_month)
-    Box(
-        contentAlignment = Alignment.Center,
+    // The bar says it can be dragged; the words say what a tap does, so the month is found without dragging.
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = OriDimensions.MinTouchTarget)
-            .clickable(onClickLabel = label, role = Role.Button, onClick = onToggle)
-            .semantics { contentDescription = label }
+            .clickable(role = Role.Button, onClick = onToggle)
     ) {
         Box(
             modifier = Modifier
                 .size(width = HandleWidth, height = HandleHeight)
                 .background(MaterialTheme.colorScheme.outline, CircleShape)
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = OriSpacing.ExtraSmall)
         )
     }
 }
@@ -138,7 +148,7 @@ private fun MonthCalendar(
         Row {
             daysOfWeekInOrder.forEach { day ->
                 Text(
-                    text = day.shortName(),
+                    text = day.shortName(LocalAppLocale.current),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -155,6 +165,12 @@ private fun MonthCalendar(
             val month = FirstMonth.plusMonths(shown.toLong())
             Column(modifier = Modifier.selectableGroup(), verticalArrangement = Arrangement.Top) {
                 daysShownIn(month).chunked(DAYS_IN_WEEK).forEach { week ->
+                    // A week all in the next month keeps its height, empty: six rows always, without a
+                    // whole week of another month to confuse.
+                    if (week.none { YearMonth.from(it) == month }) {
+                        Spacer(modifier = Modifier.height(DayCellHeight))
+                        return@forEach
+                    }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         week.forEach { day ->
                             DayCell(

@@ -2,18 +2,23 @@ package com.oriteam.ori.ui.components.photo
 
 import android.graphics.BitmapFactory
 import android.util.LruCache
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
+import com.oriteam.ori.ui.theme.LocalOriAppearance
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -35,10 +40,15 @@ fun StoredPhotoImage(
     val bitmap by produceState(initialValue = path?.let(DecodedPhotos::get), path) {
         if (value == null && path != null) value = withContext(Dispatchers.IO) { DecodedPhotos.decode(path) }
     }
+    val motion = LocalOriAppearance.current.motion
+    // A photo already in memory is there from the first frame: only one still being read fades in.
+    val isReadyAtStart = remember(path) { bitmap != null }
     val loaded = bitmap
     if (loaded == null) {
         placeholder()
     } else {
+        val opacity = remember(path) { Animatable(if (isReadyAtStart || !motion.movesThings) 1f else 0f) }
+        LaunchedEffect(opacity) { opacity.animateTo(1f, motion.decorative(PHOTO_FADE_MILLIS)) }
         Image(
             bitmap = loaded,
             contentDescription = null,
@@ -46,9 +56,12 @@ fun StoredPhotoImage(
             modifier = modifier
                 .size(size)
                 .clip(shape)
+                .graphicsLayer { alpha = opacity.value }
         )
     }
 }
+
+private const val PHOTO_FADE_MILLIS = 250
 
 /**
  * Photos decoded recently, kept by path. Stored photos are at most 512 px, about 1 MB decoded; the cache

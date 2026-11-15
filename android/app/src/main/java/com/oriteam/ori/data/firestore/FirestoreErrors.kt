@@ -37,11 +37,25 @@ internal fun dataErrorFor(code: FirebaseFirestoreException.Code): DataError =
 internal fun dataErrorFor(code: FirebaseFunctionsException.Code): DataError =
     dataErrorsByFunctionsCode[code] ?: DataError.UNKNOWN
 
+/**
+ * The text of the server's own "not found" (an unknown invitation code, `careInvitations.ts`). A function that is
+ * not published also answers NOT_FOUND, without this text: telling them apart keeps "Código não encontrado" from
+ * showing when the invitation service itself is missing.
+ */
+internal const val SERVER_NOT_FOUND_MESSAGE = "Unknown code"
+
+internal fun dataErrorFor(code: FirebaseFunctionsException.Code, message: String?): DataError =
+    if (code == FirebaseFunctionsException.Code.NOT_FOUND && message != SERVER_NOT_FOUND_MESSAGE) {
+        DataError.SERVICE_UNAVAILABLE
+    } else {
+        dataErrorFor(code)
+    }
+
 /** Maps any SDK failure to a [DataError]. Logs only the error code, never document content. */
 internal fun dataErrorFor(exception: Exception): DataError {
     val error = when (exception) {
         is FirebaseFirestoreException -> dataErrorFor(exception.code)
-        is FirebaseFunctionsException -> dataErrorFor(exception.code)
+        is FirebaseFunctionsException -> dataErrorFor(exception.code, exception.message)
         else -> DataError.UNKNOWN
     }
     Log.w(TAG, "Data operation failed: ${exception.javaClass.simpleName} -> $error")

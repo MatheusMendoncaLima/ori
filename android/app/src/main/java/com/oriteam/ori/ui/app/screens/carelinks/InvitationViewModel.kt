@@ -34,7 +34,7 @@ internal fun DataError.invitationMessageRes(): Int = when (this) {
     DataError.PRECONDITION_FAILED -> R.string.invitation_error_expired
     DataError.CONFLICT -> R.string.invitation_error_already_linked
     DataError.PERMISSION_DENIED -> R.string.invitation_error_not_allowed
-    DataError.NETWORK_UNAVAILABLE, DataError.UNKNOWN -> messageRes()
+    DataError.NETWORK_UNAVAILABLE, DataError.SERVICE_UNAVAILABLE, DataError.UNKNOWN -> messageRes()
 }
 
 /** Caregiver creates a code; primary user types it. Both operations run on the server. */

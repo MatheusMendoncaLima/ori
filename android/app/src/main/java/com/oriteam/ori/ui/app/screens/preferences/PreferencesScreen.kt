@@ -61,16 +61,17 @@ private val listLabels = mapOf(
 private val startAreaLabels = mapOf(
     StartArea.HOME to R.string.start_area_home,
     StartArea.ROUTINE to R.string.main_my_routine,
-    StartArea.COMMUNICATION to R.string.main_form_sentence
+    StartArea.COMMUNICATION to R.string.main_sentences
 )
 
 /** The groups of options, each one screen, as in the "Configurações" wireframe. */
 enum class PreferenceSection { ACCESSIBILITY, THEME, COMMUNICATION, SCREEN }
 
-private val sectionTitles = mapOf(
-    PreferenceSection.ACCESSIBILITY to R.string.profile_accessibility,
+/** Short, so the title bar keeps them on one line on a phone (`PreferencesScreenTest`). */
+internal val sectionTitles = mapOf(
+    PreferenceSection.ACCESSIBILITY to R.string.settings_accessibility_title,
     PreferenceSection.THEME to R.string.settings_theme,
-    PreferenceSection.COMMUNICATION to R.string.profile_communication,
+    PreferenceSection.COMMUNICATION to R.string.settings_communication_title,
     PreferenceSection.SCREEN to R.string.settings_screen
 )
 
@@ -83,7 +84,11 @@ fun PreferenceSectionRoute(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     Column(modifier = Modifier.fillMaxSize()) {
-        OriTopBar(title = stringResource(sectionTitles.getValue(section)), onNavigateBack = onNavigateBack)
+        OriTopBar(
+            maxWidth = OriDimensions.FormMaxWidth,
+            title = stringResource(sectionTitles.getValue(section)),
+            onNavigateBack = onNavigateBack
+        )
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             CenteredContent(maxWidth = OriDimensions.FormMaxWidth) {
                 PreferencesContent(

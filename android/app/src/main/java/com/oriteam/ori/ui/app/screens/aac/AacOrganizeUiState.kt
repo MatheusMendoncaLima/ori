@@ -37,6 +37,9 @@ data class AacOrganizeUiState(
     val boards: ContentState<List<OrganizerItemUiModel<BoardTabUiModel>>> = ContentState.Loading,
     val selectedBoardId: String? = null,
     val symbols: ContentState<List<OrganizerItemUiModel<AacSymbolUiModel>>> = ContentState.Loading,
+    /** Words of the suggested board the open board lacks; above zero, "Acrescentar" offers them. */
+    val suggestedWordsToAdd: Int = 0,
+    val isAddingSuggestedWords: Boolean = false,
     val boardDialog: BoardNameDialog? = null,
     val pendingDeletion: PendingAacDeletion? = null,
     @StringRes val actionErrorRes: Int? = null,

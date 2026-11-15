@@ -9,11 +9,19 @@ data class AacCommunicateActions(
     val onShowBoards: () -> Unit,
     val onSymbolTap: (String) -> Unit,
     val onAddSymbol: () -> Unit = {},
-    val onSayPhrase: (String) -> Unit,
+    val onSayPhrase: (text: String, language: String?) -> Unit,
     val onDeleteSavedRequest: (SavedMessage) -> Unit,
     val onCreateStarterBoard: () -> Unit,
     val onRetry: () -> Unit,
     val onDismissDisplay: () -> Unit,
     val onDeleteSavedConfirm: () -> Unit,
-    val onDeleteSavedDismiss: () -> Unit
+    val onDeleteSavedDismiss: () -> Unit,
+    val onChangeEmojiRequest: (SavedMessage) -> Unit = {},
+    val onChangeEmojiConfirm: (String?) -> Unit = {},
+    val onChangeEmojiDismiss: () -> Unit = {},
+    val onMoveSymbol: (symbolId: String, toIndex: Int) -> Unit = { _, _ -> },
+    val onMoveSaved: (messageId: String, toIndex: Int) -> Unit = { _, _ -> },
+    val onMoveReady: (phraseId: String, toIndex: Int) -> Unit = { _, _ -> },
+    val onRaiseVolume: () -> Unit = {},
+    val onDismissVolumeWarning: () -> Unit = {}
 )

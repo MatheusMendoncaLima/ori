@@ -54,7 +54,7 @@ sequenceDiagram
 ```
 
 - **Período:**
-  - A semana começa no primeiro dia da semana do app (`FIRST_DAY_OF_WEEK`, domingo); o mês começa no dia 1.
+  - A semana começa no primeiro dia da semana do idioma do app (`firstDayOfWeek`: domingo em português); o mês começa no dia 1.
   - Os dois vão só até hoje: o futuro ainda não tem o que contar.
 - **Atividades do dia:** passam por `forDay()`, que tira as arquivadas. Um dia de uma atividade repetida conta como uma atividade daquele dia.
 - **Porcentagem:** `concluídas × 100 / total`, somando só os dias com atividades.
@@ -97,6 +97,9 @@ está em [caa.md](caa.md).
 **Acessibilidade:**
 
 - Cada bloco do resumo é lido como uma coisa só ("15, Atividades concluídas").
+- Cada bloco tem a cor da área que ele mede, a mesma dos menus: concluídas em verde-menta (Rotina), "Do planejado"
+  em amarelo (Relatórios) e a comunicação em lilás (Comunicação). Até 09/11/2026 os dois primeiros tinham a mesma cor;
+  no wireframe, os três são diferentes.
 - O gráfico tem uma descrição, e os mesmos números estão nos detalhes, para quem não lê gráficos.
 
 ## 9. Como testar
@@ -118,3 +121,16 @@ está em [caa.md](caa.md).
 - **Um número novo no relatório:** calcule em `domain/reports` com um teste puro e só depois mostre na tela.
 - **Um período novo** (por exemplo, "últimos 30 dias"): basta outro valor em `ReportPeriod`. A leitura por intervalo serve para qualquer período. Mantenha o período curto, porque cada dia lido custa leitura.
 - **Mostrar o relatório para quem acompanha:** antes, decida a permissão com quem é acompanhado (novo campo em `CareLinkPermissions`), com regra e teste no emulador.
+
+## Mudanças de 07/11/2026 (segunda rodada)
+
+- **Singular e plural.** Os rótulos dos números vêm de `plurals`: "1 Atividade concluída", "3 Atividades
+  concluídas", "1 Vez que se comunicou" (antes, sempre no plural).
+- **Gráfico por data** (`DailyChart.kt`):
+  - cada dia do período tem o seu lugar, inclusive os sem atividades. Antes só entravam os dias com atividades, lado a lado, e uma linha de 01/11 a 07/11 sugeria valores nos dias do meio;
+  - só dias vizinhos com atividades são ligados;
+  - rótulos de 0%, 50% e 100% ao lado da grade, escondidos do leitor de tela (o gráfico é uma descrição só, e os números estão nos detalhes);
+  - a linha e os pontos são revelados pela mesma borda, então um ponto aparece quando a linha chega nele;
+  - a linha e os pontos ficam dentro de uma margem do tamanho de um ponto: um dia em 0% não fica em cima da data.
+- **Nota da contagem** alinhada à esquerda, como o resto.
+- **Testes:** `ReportTilesTest` (singular e plural), `DailyChartTest` (posição pela data e dias vazios).

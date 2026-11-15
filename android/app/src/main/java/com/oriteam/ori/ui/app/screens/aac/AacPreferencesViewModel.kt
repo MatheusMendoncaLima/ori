@@ -29,6 +29,8 @@ class AacPreferencesViewModel @Inject constructor(
 
     fun onMessageModeChange(value: MessageMode) = update { it.copy(messageMode = value) }
 
+    fun onDragToReorderChange(value: Boolean) = update { it.copy(dragToReorder = value) }
+
     private fun update(transform: (AacPreferences) -> AacPreferences) {
         viewModelScope.launch { preferencesRepository.update(transform) }
     }

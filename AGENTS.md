@@ -29,6 +29,7 @@ Arquivos de instrução específicos complementam este contrato sem repeti-lo:
 |---|---|
 | Arquitetura, pacotes, navegação e verificações | [docs/arquitetura.md](docs/arquitetura.md) |
 | Tokens visuais, componentes e layout adaptativo | [docs/design-system.md](docs/design-system.md) |
+| Animações: níveis, peças prontas e onde cada uma aparece | [docs/design-system.md](docs/design-system.md#movimento-animações) |
 | Camada de dados, offline, custos, índices, ambientes (`dev`/`staging`/`prod`) e evolução do esquema | [docs/dados.md](docs/dados.md) |
 | Contas, vínculos, permissões e regras de segurança | [docs/funcionalidades/perfis-e-permissoes.md](docs/funcionalidades/perfis-e-permissoes.md) |
 | Cadastro, login e senha | [docs/funcionalidades/autenticacao.md](docs/funcionalidades/autenticacao.md) |
@@ -38,18 +39,42 @@ Arquivos de instrução específicos complementam este contrato sem repeti-lo:
 | Relatórios | [docs/funcionalidades/relatorios.md](docs/funcionalidades/relatorios.md) |
 | Comunicação (CAA) | [docs/funcionalidades/caa.md](docs/funcionalidades/caa.md) |
 | Preferências e configurações | [docs/funcionalidades/preferencias.md](docs/funcionalidades/preferencias.md) |
+| ORI Home, a tela inicial opcional (launcher) | [docs/funcionalidades/launcher.md](docs/funcionalidades/launcher.md) |
+| Teste do ORI Home no tablet e diferenças para o One UI | [docs/funcionalidades/launcher-teste-one-ui.md](docs/funcionalidades/launcher-teste-one-ui.md) |
+| Plano de mudanças do ORI Home (girar como o One UI, correções) | [docs/funcionalidades/launcher-plano.md](docs/funcionalidades/launcher-plano.md) |
+| Idiomas: como o app escolhe o idioma das datas e da voz, e como traduzir | [docs/idiomas.md](docs/idiomas.md) |
 | Falhas e gambiarras conhecidas, ainda não corrigidas | [docs/revisao-de-codigo.md](docs/revisao-de-codigo.md) |
+| Teste geral no tablet: erros, pontos de melhora e design duvidoso (12/11/2026); desempenho medido e design (13/11/2026); tempo para abrir cada tela (13/11/2026) | [docs/teste-geral.md](docs/teste-geral.md) |
 | Revisões anteriores (histórico de decisões) | [docs/revisao-estrutura-e-design.md](docs/revisao-estrutura-e-design.md), [docs/revisao-de-design.md](docs/revisao-de-design.md) |
 
 ### Regras que valem em todo o código
 
 - Texto na interface usa `ui/components/text/Text.kt`, nunca o `Text` do Material: é o que aplica o botão "Aa" em todas as telas.
+- Diálogo usa `OriAlertDialog`, `OriConfirmationDialog` ou `OriDialog` (`ui/components/dialog`), nunca o `AlertDialog` ou o
+  `Dialog` do Material: são desenhados na janela da própria tela (`OriDialogHost`, em `MainActivity` e `LauncherActivity`)
+  e abrem sem o Android criar uma janela, o que custava de 50 a 90 ms a cada abertura. O detekt proíbe os do Material.
 - Toda mudança em `firestore.rules` ou nas funções exige teste em `functions/security-tests`.
 - Toda consulta de lista deve ter `limit` (as regras recusam listas sem limite) e nenhum listener deve viver fora do ciclo de vida da tela.
 - Uma consulta que precisa de índice composto tem o índice em `functions/firestore.indexes.json`, publicado junto com as regras.
 - Uma classe que **encaminha** um contrato (`Routed*`, `SharedReading*`, `RepeatingRoutineRepository`) sobrescreve **todos** os membros, inclusive os que têm implementação padrão na interface, e tem teste disso. Um membro esquecido cai no comportamento padrão sem nenhum aviso (foi o que aconteceu com `getDays`, falha R1). Use `assertForwardsEveryMember` (`src/test/.../testing/ForwardingCheck.kt`).
+- Data na tela usa `rememberDateFormat` com um esqueleto de `DateSkeletons`, e nome de dia ou mês usa
+  `LocalAppLocale.current`: nunca um padrão escrito à mão (`"d 'de' MMMM"`), que só serve para um idioma.
+  Hora na tela usa `rememberTimeFormat`, nunca `"HH:mm"` (este só para gravar).
+- Texto novo vai para o `strings_<área>.xml` da área (`aac`, `routine`, `account`, `settings`, `reports`);
+  `strings.xml` fica com o que é comum. Um texto que cita um botão recebe o nome dele por parâmetro.
+  O app está em português, inglês e espanhol: o texto vai para `values` e para a cópia `values-pt`, e a
+  tradução para `values-en` e `values-es` (o `AppLanguagesTest` e o Lint conferem). Veja [docs/idiomas.md](docs/idiomas.md).
+- Tela com o botão flutuante (`OriActionPill`) usa `ActionPillLayout`, que mede o botão: nada de espaço fixo em dp.
 - Leitura de disco ou de rede nunca na thread principal. Isso vale também para `File.exists`/`isFile` dentro de um `combine` de ViewModel, que roda na thread principal.
 - O banco local (Room) muda com versão nova, `Migration` e o esquema exportado em `android/app/schemas`.
+- Toda animação passa por `OriMotion` e pelas peças de `ui/components/motion` e `ui/theme/OriTransitions.kt`,
+  nunca por uma duração ou curva soltas: é o que faz "Animações" em Configurações valer no app inteiro.
+  O valor animado é lido no desenho (`graphicsLayer`, `drawBehind`), não na composição.
+- Fluidez e desempenho se medem no build `profiling` (`./gradlew assembleProdProfiling`) com
+  `adb shell dumpsys gfxinfo`, nunca num build de depuração. Instalado pelo cabo, o app roda sem compilar até o
+  aparelho ficar ocioso: antes de medir, compile como a loja faz (`adb shell cmd package compile -f -m speed-profile
+  com.oriteam.ori`). O tempo para abrir uma tela se mede com o rastreamento do sistema (`atrace`), do dedo saindo da
+  tela até o fim do primeiro quadro, com toques de uns 90 ms, como os de um dedo: veja [docs/teste-geral.md](docs/teste-geral.md).
 - Os dados do aparelho e os da conta passam pelo mesmo contrato. A tela recebe um dono (`ownerUid`) e não sabe onde o dado mora (`LOCAL_OWNER_UID` = aparelho).
 
 ### Publicação (Firebase)
@@ -117,7 +142,7 @@ nomes completos (evite `Manager`, `Helper`, `Utils`, `Data` sem contexto).
 - TypeScript/JavaScript: camelCase; PascalCase para tipos e componentes React.
 - Python (se existir): PEP 8.
 - Não renomeie APIs de terceiros, símbolos gerados ou contratos persistidos sem
-  analisar a migração. Textos exibidos ao usuário ficam em português, em `strings.xml`.
+  analisar a migração. Textos exibidos ao usuário ficam nos `strings*.xml`, em português, inglês e espanhol.
 
 ## 6. Formatação e ferramentas
 
@@ -235,3 +260,28 @@ segurança: parte do código usa CRLF, e uma substituição errada pode apagar u
 11. **Verificação visual.** Teste de posição não basta para layout. Uma mudança visual é conferida
     numa imagem renderizada na largura de um celular (360 dp, com Robolectric) e, quando possível,
     no aparelho. Diga qual das duas foi feita.
+
+## 14. Privacidade, LGPD e Google Play (regra permanente)
+
+O ORI trata dados sensíveis (rotina e comunicação de pessoas com deficiência, inclusive crianças). Esta regra vale em
+toda mudança, para que os documentos legais e o app nunca fiquem desatualizados. Controlador, contato e decisões:
+[docs/legal/README.md](docs/legal/README.md).
+
+- **Dado novo, campo novo ou coleção nova** (no Firestore, no banco local, no DataStore ou enviado a um serviço):
+  atualize na mesma etapa a política de privacidade nos 3 idiomas (`web/app/legal/content.ts`), o mapa de dados
+  e o formulário de Segurança de Dados ([docs/legal/seguranca-de-dados.md](docs/legal/seguranca-de-dados.md)),
+  a exportação (`AccountDataExporter`) e a exclusão da conta (`AccountDeletion`), com teste de que o dado sai no
+  arquivo exportado e some ao apagar a conta (e teste das regras no emulador).
+- **Mudança relevante na política ou nos termos** (novo uso, nova finalidade, novo terceiro): suba
+  `LEGAL_DOCUMENTS_VERSION`; o app pede o consentimento de novo. Registre a mudança no histórico de
+  [docs/legal/README.md](docs/legal/README.md).
+- **Consentimento:** nenhum dado de conta é gravado antes do consentimento (J2); menor de 18 só com a confirmação
+  do responsável legal (J3). Retirar o consentimento é sempre possível e leva à exclusão dos dados.
+- **Autonomia (J4):** quem é acompanhado vê e revoga, sem pedir a ninguém, tudo o que o responsável pode ver ou fazer.
+  Nenhuma função de administração esconde algo do acompanhado ou bloqueia o aparelho.
+- **Sem promessa de saúde (J8):** textos do app, da loja e da web nunca dizem que o ORI trata, diagnostica ou
+  substitui terapia ou acompanhamento profissional.
+- **Licenças (J9):** dependência, fonte, ícone ou imagem novos entram na tela de licenças (`OpenSourceLicenses`);
+  nada de símbolos de CAA protegidos (PCS, Boardmaker) sem licença.
+- **Logs e analytics:** nunca dados pessoais nem conteúdo do usuário.
+- **Publicação:** antes de cada versão na loja, conferir a lista de [docs/legal/README.md](docs/legal/README.md#antes-de-publicar).

@@ -3,7 +3,7 @@ package com.oriteam.ori.data.local
 import androidx.room.withTransaction
 import com.oriteam.ori.domain.aac.AacUsageRepository
 import com.oriteam.ori.domain.aac.MAX_SYMBOLS_PER_BOARD
-import com.oriteam.ori.domain.aac.SavedMessage
+import com.oriteam.ori.domain.common.DataResult
 import com.oriteam.ori.domain.local.LocalBoard
 import com.oriteam.ori.domain.local.LocalDataSnapshot
 import com.oriteam.ori.domain.local.LocalDataStore
@@ -26,7 +26,7 @@ class RoomLocalDataStore @Inject constructor(private val database: OriDatabase) 
                     aac.getSymbols(board.id, MAX_SYMBOLS_PER_BOARD).map { it.toDomain() }
                 )
             },
-            savedMessages = messages.getAll().map { SavedMessage(it.id, it.text) }
+            savedMessages = messages.getAll().map { it.toSavedMessage() }
         )
     }
 
@@ -58,11 +58,9 @@ class RoomAacUsageRepository @Inject constructor(database: OriDatabase) : AacUsa
         runLocalRead { dao.record(date.toString()) }
     }
 
-    override suspend fun countBetween(start: LocalDate, end: LocalDate): Int =
-        (
-            runLocalRead {
-                dao.countBetween(start.toString(), end.toString())
-            } as? com.oriteam.ori.domain.common.DataResult.Success
-            )
-            ?.value ?: 0
+    /** A failed read counts nothing: the count is a summary, and the report shows the rest of the data anyway. */
+    override suspend fun countBetween(start: LocalDate, end: LocalDate): Int {
+        val result = runLocalRead { dao.countBetween(start.toString(), end.toString()) }
+        return (result as? DataResult.Success)?.value ?: 0
+    }
 }

@@ -2,10 +2,10 @@ package com.oriteam.ori.testing
 
 import com.oriteam.ori.domain.carelink.CareLinkPermissions
 import com.oriteam.ori.domain.common.DataResult
-import com.oriteam.ori.domain.model.TaskStatus
 import com.oriteam.ori.domain.routine.RoutineSnapshot
 import com.oriteam.ori.domain.routine.RoutineTask
 import com.oriteam.ori.domain.routine.RoutineViewer
+import com.oriteam.ori.domain.routine.TaskStatus
 import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalTime

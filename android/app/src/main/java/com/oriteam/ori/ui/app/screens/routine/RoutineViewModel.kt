@@ -15,6 +15,7 @@ import com.oriteam.ori.domain.routine.canCreateActivity
 import com.oriteam.ori.domain.routine.canDeleteActivity
 import com.oriteam.ori.domain.routine.canToggleCompletion
 import com.oriteam.ori.domain.routine.forDay
+import com.oriteam.ori.ui.app.screens.common.loadingAfter
 import com.oriteam.ori.ui.app.screens.common.messageRes
 import com.oriteam.ori.ui.app.screens.common.withLastingSyncNotice
 import com.oriteam.ori.ui.components.state.ContentState
@@ -76,7 +77,8 @@ class RoutineViewModel @Inject constructor(
         .flatMapLatest { (current, day) ->
             routineRepository.observeDay(current.ownerUid, current.viewer, day)
                 .map { result -> toDay(result, current.viewer, day) }
-                .onStart { emit(Day(emptyMap(), baseState(current.viewer, day))) }
+                // The list of the previous day stays until this one arrives; only a slow read says "Carregando".
+                .loadingAfter { Day(emptyMap(), baseState(current.viewer, day)) }
         }
         .withLastingSyncNotice(
             notice = { it.state.syncNoticeRes },
@@ -118,10 +120,16 @@ class RoutineViewModel @Inject constructor(
 
     /** The listener runs only while the screen collects this state (lifecycle-aware in the UI). */
     val uiState: StateFlow<RoutineUiState> =
-        combine(day.filterNotNull(), interaction, monthMarks) { current, local, marks ->
-            current.state.copy(
+        combine(day, date, interaction, monthMarks) { current, selected, local, marks ->
+            // Before the first day arrives there is nothing to show yet: "Carregando".
+            val shown = current?.state ?: RoutineUiState(date = selected)
+            shown.copy(
+                // The chosen day shows at once, even while its activities are still on their way.
+                date = selected,
+                contentDate = current?.state?.date,
+                daysFromToday = ChronoUnit.DAYS.between(today(), selected),
                 actionErrorRes = local.actionErrorRes,
-                pendingDeletion = local.pendingDeletionId?.let(current.state::step),
+                pendingDeletion = local.pendingDeletionId?.let(shown::step),
                 daysWithActivities = marks
             )
         }.stateIn(

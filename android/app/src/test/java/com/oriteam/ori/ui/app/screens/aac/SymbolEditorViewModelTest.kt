@@ -3,6 +3,7 @@ package com.oriteam.ori.ui.app.screens.aac
 import androidx.lifecycle.SavedStateHandle
 import com.oriteam.ori.R
 import com.oriteam.ori.domain.aac.AacViewer
+import com.oriteam.ori.domain.aac.SymbolColor
 import com.oriteam.ori.domain.aac.SymbolDraft
 import com.oriteam.ori.domain.aac.SymbolImage
 import com.oriteam.ori.domain.common.DataError
@@ -24,6 +25,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
+private const val FIRST_OPENING = "opening-1"
+
 class SymbolEditorViewModelTest {
 
     @get:Rule
@@ -40,7 +43,7 @@ class SymbolEditorViewModelTest {
         savedState: SavedStateHandle = SavedStateHandle(),
         viewer: AacViewer = AacViewer.Owner,
         existing: com.oriteam.ori.domain.aac.AacSymbol? = null
-    ) = SymbolEditorViewModel(boards, photos, savedState).apply { start(OWNER, viewer, "b1", existing) }
+    ) = SymbolEditorViewModel(boards, photos, savedState).apply { start(FIRST_OPENING, OWNER, viewer, "b1", existing) }
 
     @Test
     fun `a new symbol is saved at the end of the board with its phrase and emoji`() = runTest {
@@ -54,6 +57,22 @@ class SymbolEditorViewModelTest {
         val write = boards.writes.single()
         assertEquals("createSymbol", write.operation)
         assertEquals(SymbolDraft("Banheiro", "Preciso ir ao banheiro", SymbolImage.Emoji("🚻")) to 5, write.detail)
+    }
+
+    @Test
+    fun `the chosen tile color is saved, and survives a restart of the form`() = runTest {
+        val savedState = SavedStateHandle()
+        editor(savedState).apply {
+            onLabelChange("Banheiro")
+            onColorChange(SymbolColor.PINK)
+        }
+
+        val restored = editor(savedState)
+        assertEquals(SymbolColor.PINK, restored.uiState.value.color)
+        restored.onColorChange(null)
+        restored.onSaveClick()
+
+        assertEquals(SymbolDraft("Banheiro", null, null, color = null) to 5, boards.writes.single().detail)
     }
 
     @Test
@@ -134,6 +153,20 @@ class SymbolEditorViewModelTest {
 
         viewModel.onClose()
 
+        assertEquals(listOf(StoredPhoto("new-photo.jpg")), photos.deleted)
+    }
+
+    @Test
+    fun `a form left with the system back opens again empty, and its imported photo is removed`() = runTest {
+        // The ViewModel outlives the form: the same one is used when the form opens again.
+        val viewModel = editor()
+        viewModel.onLabelChange("Banheiro")
+        viewModel.onPhotoPicked("content://photo")
+
+        viewModel.start("opening-2", OWNER, AacViewer.Owner, "b1", existing = null)
+
+        assertEquals("", viewModel.uiState.value.labelInput)
+        assertEquals(null, viewModel.uiState.value.image)
         assertEquals(listOf(StoredPhoto("new-photo.jpg")), photos.deleted)
     }
 

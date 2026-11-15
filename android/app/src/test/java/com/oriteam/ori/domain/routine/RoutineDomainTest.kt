@@ -1,6 +1,5 @@
 package com.oriteam.ori.domain.routine
 
-import com.oriteam.ori.domain.model.TaskStatus
 import com.oriteam.ori.testing.DAY
 import com.oriteam.ori.testing.OWNER
 import com.oriteam.ori.testing.activity
@@ -43,9 +42,18 @@ class RoutineDomainTest {
         assertEquals(TimeInput.Valid(LocalTime.of(8, 5)), parseScheduledTime(" 8:05 "))
         assertEquals(TimeInput.Valid(LocalTime.of(23, 59)), parseScheduledTime("23:59"))
         assertEquals(TimeInput.Empty, parseScheduledTime("  "))
-        for (invalid in listOf("24:00", "12:60", "8h", "0830", "ab:cd")) {
+        for (invalid in listOf("24:00", "12:60", "8h", "0830", "ab:cd", "13:00 PM", "0:30 am")) {
             assertEquals(invalid, TimeInput.Invalid, parseScheduledTime(invalid))
         }
+    }
+
+    @Test
+    fun `time input also takes 7h30 and the 12-hour clock of American English`() {
+        assertEquals(TimeInput.Valid(LocalTime.of(7, 30)), parseScheduledTime("7h30"))
+        assertEquals(TimeInput.Valid(LocalTime.of(20, 30)), parseScheduledTime("8:30 PM"))
+        assertEquals(TimeInput.Valid(LocalTime.of(20, 30)), parseScheduledTime("8:30pm"))
+        assertEquals(TimeInput.Valid(LocalTime.of(0, 15)), parseScheduledTime("12:15 a.m."))
+        assertEquals(TimeInput.Valid(LocalTime.of(12, 15)), parseScheduledTime("12:15 PM"))
     }
 
     @Test

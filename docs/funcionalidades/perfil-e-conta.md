@@ -52,6 +52,7 @@ flowchart TD
 ### Nome
 
 - **Com conta:** "Dados pessoais" grava o nome em `users/{uid}.displayName` (`ProfileRepository.updateDisplayName`). As regras só deixam mudar esse campo, e com até 100 caracteres.
+- **No Início**, a saudação usa só o primeiro nome (`UserProfile.firstName`, a primeira palavra do nome): "Olá, Ana!". Sem nome, fica "Olá!". O nome completo aparece no Perfil.
 - **Sem conta:** o nome fica no DataStore do aparelho.
 - **Nome vazio:** é recusado antes de qualquer gravação.
 
@@ -85,7 +86,9 @@ sequenceDiagram
 
 ### Sair da conta
 
-- O botão pede confirmação, porque é fácil tocar sem querer. Ele não é vermelho, porque sair não apaga nada: os dados continuam na conta.
+- O botão fica em vermelho, como no wireframe, para se separar das linhas de menu acima dele (desde 09/11/2026; antes era ciano).
+  Ele pede confirmação, porque é fácil tocar sem querer, e o diálogo não é o de ação destrutiva, porque sair não apaga
+  nada: os dados continuam na conta.
 - Sair chama `AuthRepository.signOut()`. A sessão vira `SignedOut`, e o `OriApp` troca a área inteira, sem navegação manual.
 
 ### Sem conta
@@ -127,9 +130,19 @@ sequenceDiagram
   - uma foto nova tem um caminho novo;
   - erros, remoção, e a passagem da foto para a conta.
 - **`SessionViewModelTest`:** estados da sessão, perfil a criar, uso offline com a cópia do perfil, passagem dos dados e da foto para a conta, apagar e renomear.
-- **Regras:** os testes "profiles" e "photos" em `functions/security-tests/test/rules.test.mjs`.
+- **Regras:** `functions/security-tests/test/profiles.test.mjs` e `photos.test.mjs`.
 
 ## 8. Como estender sem quebrar
 
 - **Um dado novo sobre a pessoa:** antes, pergunte se o app precisa mesmo dele (dados mínimos). Se precisar, ele entra em `isValidNewProfile` e na regra de `update`, com teste no emulador, e em `FirestoreSchema`.
 - **Uma linha nova no menu:** use `OriMenuRow` com a cor da área a que ela pertence (`OriAreaAccents`) e uma subtela em `ProfilePane`.
+
+## Mudanças de 07/11/2026 (segunda rodada)
+
+- **Um caminho para editar o perfil.** O menu não tem mais a linha "Dados pessoais", que abria a mesma tela do
+  botão "Editar perfil" do cartão.
+- **Sair da conta** apaga a cópia do perfil guardada para abrir sem internet (`clearAccountProfileCopy`). Teste:
+  `SessionViewModelTest`.
+- **O cache do Firestore fica**, de propósito: a conta seguinte só consulta os próprios dados, e as regras do
+  servidor valem para ela. Apagar o cache exigiria parar o Firestore (`terminate`) até o app fechar, e os
+  repositórios do app usam a mesma instância durante toda a sessão.

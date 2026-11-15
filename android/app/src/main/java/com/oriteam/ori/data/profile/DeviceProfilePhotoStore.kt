@@ -53,11 +53,7 @@ class DeviceProfilePhotoStore @Inject constructor(
         }
     }
 
-    private fun Preferences.pathFor(uid: String) = this[
-        photoKey(
-            uid
-        )
-    ]?.let { photos.pathOf(StoredPhoto(it)) }
+    private fun Preferences.pathFor(uid: String) = this[photoKey(uid)]?.let { photos.pathOf(StoredPhoto(it)) }
 
     /** An empty answer from the cache proves nothing, so only the server can remove the copy. */
     private suspend fun keepCopy(uid: String, photo: CloudPhoto) {

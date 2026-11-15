@@ -22,22 +22,32 @@ sealed interface TimeInput {
     data object Invalid : TimeInput
 }
 
-private val timePattern = Regex("""^(\d{1,2}):(\d{2})$""")
+/** Hours and minutes with ":" or "h" between them ("8:30", "8h30"), and AM/PM for the 12-hour clock. */
+private val timePattern = Regex("""^(\d{1,2})[:hH](\d{2})\s*(?:([aApP])\.?\s?[mM]\.?)?$""")
 private const val LAST_HOUR = 23
 private const val LAST_MINUTE = 59
+private const val NOON = 12
 
-/** Accepts "8:30" and "08:30" (24-hour clock). */
+/**
+ * Accepts the ways people write a time: "8:30", "08:30" and "8h30" on the 24-hour clock, and "8:30 PM" or
+ * "8:30pm" on the 12-hour one, as in American English. With AM/PM the hour goes from 1 to 12.
+ */
 fun parseScheduledTime(text: String): TimeInput {
     val trimmed = text.trim()
-    val parts = timePattern.matchEntire(trimmed)?.destructured?.toList()?.map(String::toInt)
-    val hour = parts?.get(0)
-    val minute = parts?.get(1)
-    return when {
-        trimmed.isEmpty() -> TimeInput.Empty
-        hour != null && minute != null && hour in 0..LAST_HOUR && minute in 0..LAST_MINUTE ->
-            TimeInput.Valid(LocalTime.of(hour, minute))
-        else -> TimeInput.Invalid
+    if (trimmed.isEmpty()) return TimeInput.Empty
+    val time = timePattern.matchEntire(trimmed)?.destructured?.let { (hourText, minuteText, period) ->
+        val hour = hourOf(hourText.toInt(), period.lowercase())
+        val minute = minuteText.toInt()
+        if (hour != null && hour in 0..LAST_HOUR && minute in 0..LAST_MINUTE) LocalTime.of(hour, minute) else null
     }
+    return time?.let(TimeInput::Valid) ?: TimeInput.Invalid
+}
+
+/** The hour on the 24-hour clock; null for a 12-hour one out of 1..12 ("13 PM"). */
+private fun hourOf(hour: Int, period: String): Int? = when (period) {
+    "" -> hour
+    "a" -> if (hour in 1..NOON) hour % NOON else null
+    else -> if (hour in 1..NOON) hour % NOON + NOON else null
 }
 
 /** Two activities are the same when title (ignoring case and spaces), date and time match. */

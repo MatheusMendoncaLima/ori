@@ -133,6 +133,15 @@ interface SavedMessageDao {
     @Query("DELETE FROM saved_messages WHERE id = :id")
     suspend fun delete(id: String)
 
+    @Query("UPDATE saved_messages SET emoji = :emoji WHERE id = :id")
+    suspend fun setEmoji(id: String, emoji: String?)
+
+    @Query("UPDATE saved_messages SET position = :position WHERE id = :id")
+    suspend fun setPosition(id: String, position: Int)
+
+    @Transaction
+    suspend fun move(positions: Map<String, Int>) = positions.forEach { (id, position) -> setPosition(id, position) }
+
     @Query("DELETE FROM saved_messages")
     suspend fun deleteAll()
 }
@@ -168,7 +177,7 @@ interface AacUsageDao {
         AacUsageEntity::class,
         RoutineSeriesEntity::class
     ],
-    version = 3,
+    version = 6,
     // Versions 1 and 2 were never exported; from 3 on, app/schemas keeps each one.
     exportSchema = true
 )
@@ -176,6 +185,9 @@ abstract class OriDatabase : RoomDatabase() {
     companion object {
         private const val VERSION_WITH_SERIES = 2
         private const val VERSION_WITHOUT_MEDIA = 3
+        private const val VERSION_WITH_LANGUAGES = 4
+        private const val VERSION_WITH_SAVED_EMOJI = 5
+        private const val VERSION_WITH_SAVED_ORDER = 6
 
         /** Adds repeating activities. Everything people already have stays where it is. */
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -197,6 +209,36 @@ abstract class OriDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("DROP TABLE IF EXISTS media_items")
                 File(filesDirectory, "media").deleteRecursively()
+            }
+        }
+
+        /**
+         * Boards and saved messages record their language. What already exists stays without one (null), and
+         * is read as being in the app's language, which it was written in.
+         */
+        val MIGRATION_3_4 = object : Migration(VERSION_WITHOUT_MEDIA, VERSION_WITH_LANGUAGES) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE aac_boards ADD COLUMN language TEXT")
+                db.execSQL("ALTER TABLE saved_messages ADD COLUMN language TEXT")
+            }
+        }
+
+        /**
+         * Saved messages may have their own picture, and symbols their own color and kind of word. What exists
+         * keeps the app's picture, and the color and kind the grammar gives (null).
+         */
+        val MIGRATION_4_5 = object : Migration(VERSION_WITH_LANGUAGES, VERSION_WITH_SAVED_EMOJI) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE saved_messages ADD COLUMN emoji TEXT")
+                db.execSQL("ALTER TABLE aac_symbols ADD COLUMN color TEXT")
+                db.execSQL("ALTER TABLE aac_symbols ADD COLUMN wordClass TEXT")
+            }
+        }
+
+        /** Saved messages may be moved. What exists was never moved (null), and keeps its place: newest first. */
+        val MIGRATION_5_6 = object : Migration(VERSION_WITH_SAVED_EMOJI, VERSION_WITH_SAVED_ORDER) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE saved_messages ADD COLUMN position INTEGER")
             }
         }
     }

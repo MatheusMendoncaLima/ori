@@ -16,10 +16,17 @@ const val MAX_SAVED_MESSAGE_LENGTH = 500
 data class MessagePart(
     val label: String,
     val spokenText: String,
-    val image: SymbolImage? = null
+    val image: SymbolImage? = null,
+    /** The kind chosen for the symbol's word, which the grammar follows (see [SentenceGrammar.compose]). */
+    val wordClass: WordClass? = null
 )
 
-fun AacSymbol.toMessagePart() = MessagePart(label = label, spokenText = spokenText, image = image)
+fun AacSymbol.toMessagePart() = MessagePart(
+    label = label,
+    spokenText = spokenText,
+    image = image,
+    wordClass = wordClass
+)
 
 /** A typed piece; blank text is not a piece. */
 fun typedMessagePart(text: String): MessagePart? {
@@ -29,22 +36,28 @@ fun typedMessagePart(text: String): MessagePart? {
 
 /**
  * The message being built. Immutable: every change returns a new message, which makes the
- * screen state predictable and easy to save across a restart.
+ * screen state predictable and easy to save across a restart. [grammar] is the one of its language.
  */
-data class AacMessage(val parts: List<MessagePart> = emptyList()) {
+data class AacMessage(
+    val parts: List<MessagePart> = emptyList(),
+    val grammar: SentenceGrammar = appGrammar
+) {
     val isEmpty: Boolean get() = parts.isEmpty()
     val isFull: Boolean get() = parts.size >= MAX_MESSAGE_PARTS
 
     /**
      * What is spoken. A symbol's phrase is a complete sentence, so it is said only when the symbol
      * stands alone ("Dor" says "Estou com dor"). In a built message each piece is a word of a sentence,
-     * which [composeSentence] makes read right: "estou" + "Dor" says "Estou com Dor".
+     * which the [grammar] makes read right: in Portuguese, "estou" + "Dor" says "Estou com Dor".
      */
     val text: String
-        get() = parts.singleOrNull()?.spokenText ?: sentence.toSpokenSentence()
+        get() = parts.singleOrNull()?.spokenText ?: grammar.spoken(sentence)
 
     /** Each piece as it will be said, in the same order as [parts]. */
-    val sentence: List<SentencePiece> get() = composeSentence(parts.map { it.label })
+    val sentence: List<SentencePiece> get() = grammar.compose(parts.map { it.label }, parts.map { it.wordClass })
+
+    /** The same message, read with the grammar of [language] (a language tag): the one of its board. */
+    fun inLanguage(language: String): AacMessage = copy(grammar = grammarFor(language))
 
     /** A full message ignores new pieces instead of silently dropping old ones. */
     fun add(part: MessagePart): AacMessage = if (isFull) this else copy(parts = parts + part)

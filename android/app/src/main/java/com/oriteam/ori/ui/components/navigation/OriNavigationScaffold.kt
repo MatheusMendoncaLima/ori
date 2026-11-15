@@ -27,7 +27,6 @@ fun OriNavigationScaffold(
     val layoutType = when (LocalWindowLayout.current.navigationLayout) {
         NavigationLayout.BOTTOM_BAR -> NavigationSuiteType.NavigationBar
         NavigationLayout.RAIL -> NavigationSuiteType.NavigationRail
-        NavigationLayout.DRAWER -> NavigationSuiteType.NavigationDrawer
     }
 
     NavigationSuiteScaffold(

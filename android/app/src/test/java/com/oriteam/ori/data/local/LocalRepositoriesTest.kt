@@ -136,9 +136,11 @@ class LocalRepositoriesTest {
             LOCAL_OWNER_UID,
             "Básico",
             0,
-            listOf(SymbolDraft("Água", null, SymbolImage.Emoji("💧")))
+            listOf(SymbolDraft("Água", null, SymbolImage.Emoji("💧"))),
+            "pt-BR"
         )
         val board = (repository.getBoards(LOCAL_OWNER_UID) as DataResult.Success).value.items.single()
+        assertEquals("pt-BR", board.language)
         val symbol = (repository.getSymbols(LOCAL_OWNER_UID, board.id) as DataResult.Success).value.single()
         assertEquals(SymbolImage.Emoji("💧"), symbol.image)
 
@@ -156,12 +158,22 @@ class LocalRepositoriesTest {
             override fun instant(): Instant = Instant.ofEpochMilli(now++)
         }
         val repository = LocalSavedMessageRepository(database, clock)
-        repository.saveMessage(LOCAL_OWNER_UID, "primeira")
-        repository.saveMessage(LOCAL_OWNER_UID, "segunda")
+        repository.saveMessage(LOCAL_OWNER_UID, "primeira", "pt-BR")
+        repository.saveMessage(LOCAL_OWNER_UID, "segunda", "es")
 
         val messages = (repository.observeSavedMessages(LOCAL_OWNER_UID).first() as DataResult.Success).value
 
         assertEquals(listOf("segunda", "primeira"), messages.map { it.text })
+        assertEquals(listOf("es", "pt-BR"), messages.map { it.language })
+
+        val (second, first) = messages.map { it.id }
+        assertTrue(
+            repository.reorderSavedMessages(LOCAL_OWNER_UID, mapOf(first to 0, second to 1)) is DataResult.Success
+        )
+        repository.saveMessage(LOCAL_OWNER_UID, "terceira", "pt-BR")
+        val moved = (repository.observeSavedMessages(LOCAL_OWNER_UID).first() as DataResult.Success).value
+        // The moved ones keep the order chosen; a phrase saved after them goes on top.
+        assertEquals(listOf("terceira", "primeira", "segunda"), moved.map { it.text })
     }
 
     @Test
@@ -179,7 +191,7 @@ class LocalRepositoriesTest {
     fun `erasing leaves nothing behind and the snapshot sees everything before it`() = runTest {
         val store = RoomLocalDataStore(database)
         LocalRoutineRepository(database).createActivity(LOCAL_OWNER_UID, "t", draft)
-        LocalAacBoardRepository(database).createBoard(LOCAL_OWNER_UID, "Básico", 0)
+        LocalAacBoardRepository(database).createBoard(LOCAL_OWNER_UID, "Básico", 0, "pt-BR")
         assertFalse(store.snapshot().isEmpty)
 
         store.eraseAll()

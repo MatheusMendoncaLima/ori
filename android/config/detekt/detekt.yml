@@ -26,8 +26,13 @@ complexity:
 style:
   ForbiddenImport:
     active: true
-    # Text goes through ui/components/text/Text.kt, which applies the "Aa" choice everywhere.
-    imports: ['androidx.compose.material3.Text']
+    # Text goes through ui/components/text/Text.kt, which applies the "Aa" choice everywhere. Dialogs go through
+    # ui/components/dialog (OriAlertDialog, OriDialog): drawn in the window of the screen, Android creates no window.
+    imports:
+      - 'androidx.compose.material3.Text'
+      - 'androidx.compose.material3.AlertDialog'
+      - 'androidx.compose.material3.BasicAlertDialog'
+      - 'androidx.compose.ui.window.Dialog'
   MagicNumber:
     # Dimensions, durations and colors inside layouts are design values, not business rules.
     ignoreAnnotated: ['Composable']

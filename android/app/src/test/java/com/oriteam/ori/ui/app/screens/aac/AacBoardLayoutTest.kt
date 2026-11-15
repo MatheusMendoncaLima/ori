@@ -44,7 +44,7 @@ class AacBoardLayoutTest {
         onSelect = {},
         onShowBoards = {},
         onSymbolTap = {},
-        onSayPhrase = {},
+        onSayPhrase = { _, _ -> },
         onDeleteSavedRequest = {},
         onCreateStarterBoard = {},
         onRetry = {},
@@ -56,6 +56,7 @@ class AacBoardLayoutTest {
     private fun boardState(message: List<AacSymbolUiModel> = emptyList()) = AacCommunicateUiState(
         boards = ContentState.Content(listOf(BoardTabUiModel("b1", "Básico"))),
         selection = AacSelection.Board("b1"),
+        buildBoard = AacSelection.Board("b1"),
         symbols = ContentState.Content(symbols),
         message = message
     )

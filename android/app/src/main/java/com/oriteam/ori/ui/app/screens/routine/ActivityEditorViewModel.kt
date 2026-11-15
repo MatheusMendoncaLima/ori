@@ -6,7 +6,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.oriteam.ori.domain.common.DataResult
 import com.oriteam.ori.domain.common.WriteStatus
-import com.oriteam.ori.domain.model.TaskStatus
 import com.oriteam.ori.domain.profile.LOCAL_OWNER_UID
 import com.oriteam.ori.domain.routine.ActivityDraft
 import com.oriteam.ori.domain.routine.ActivityValidationError
@@ -14,6 +13,7 @@ import com.oriteam.ori.domain.routine.RepeatRule
 import com.oriteam.ori.domain.routine.RoutineRepository
 import com.oriteam.ori.domain.routine.RoutineTask
 import com.oriteam.ori.domain.routine.RoutineViewer
+import com.oriteam.ori.domain.routine.TaskStatus
 import com.oriteam.ori.domain.routine.TimeInput
 import com.oriteam.ori.domain.routine.parseScheduledTime
 import com.oriteam.ori.domain.routine.repeatRuleFromStoredText
@@ -63,7 +63,10 @@ private object EditorKeys {
     const val OWNER_CAN_COMPLETE = "editor_owner_can_complete"
     const val HIDDEN = "editor_hidden"
     const val IS_NEW = "editor_is_new"
-    val all = listOf(ACTIVITY_ID, TITLE, TIME, DESCRIPTION, DATE, REPEAT, OWNER_CAN_COMPLETE, HIDDEN, IS_NEW)
+
+    /** Which opening of the form the draft belongs to (see `rememberFormOpening`). */
+    const val OPENING = "editor_opening"
+    val all = listOf(ACTIVITY_ID, TITLE, TIME, DESCRIPTION, DATE, REPEAT, OWNER_CAN_COMPLETE, HIDDEN, IS_NEW, OPENING)
 }
 
 private val timeInputFormat = DateTimeFormatter.ofPattern("HH:mm")
@@ -93,17 +96,29 @@ class ActivityEditorViewModel @Inject constructor(
     private var viewer: RoutineViewer = RoutineViewer.Owner
 
     /**
-     * Opens the form for [existing] or for a new activity on [defaultDate]. A restored draft
-     * (after rotation or process death) is kept instead of being reset.
+     * Opens the form for [existing] or for a new activity on [defaultDate]. The draft of the same [opening]
+     * (after rotation or process death) is kept instead of being reset. A draft of another opening was left
+     * by a form closed with the system "back": it is discarded, so the form shows the chosen day and what is
+     * saved, not what was typed and abandoned.
      */
-    fun start(ownerUid: String, viewer: RoutineViewer, existing: RoutineTask?, defaultDate: LocalDate) {
+    fun start(
+        opening: String,
+        ownerUid: String,
+        viewer: RoutineViewer,
+        existing: RoutineTask?,
+        defaultDate: LocalDate
+    ) {
         this.ownerUid = ownerUid
         this.viewer = viewer
         val isOwner = viewer == RoutineViewer.Owner
-        if (savedStateHandle.contains(EditorKeys.ACTIVITY_ID)) {
+        if (savedStateHandle.get<String>(EditorKeys.OPENING) == opening) {
             _uiState.update { it.copy(isEditedByOwner = isOwner, isLocalOwner = ownerUid == LOCAL_OWNER_UID) }
             return
         }
+        discardDraft()
+        // A save of an earlier opening may have left its answer waiting: it does not belong to this form.
+        while (_events.tryReceive().isSuccess) Unit
+        savedStateHandle[EditorKeys.OPENING] = opening
         // Reserved once: saving twice, or after a restart, writes the same activity.
         // One day of a repeating activity opens the whole activity, from its first day.
         savedStateHandle[EditorKeys.ACTIVITY_ID] =
@@ -139,7 +154,9 @@ class ActivityEditorViewModel @Inject constructor(
     fun onHiddenFromCaregiverChange(value: Boolean) = updateForm { it.copy(isHiddenFromCaregiver = value) }
 
     /** Closing the form discards the draft, so the next "new activity" starts empty. */
-    fun onClose() {
+    fun onClose() = discardDraft()
+
+    private fun discardDraft() {
         EditorKeys.all.forEach { savedStateHandle.remove<Any>(it) }
         _uiState.value = ActivityEditorUiState()
     }
@@ -156,7 +173,8 @@ class ActivityEditorViewModel @Inject constructor(
             else -> {
                 val draft = draftFrom(state, date, (time as? TimeInput.Valid)?.time)
                 _uiState.update { it.copy(isSaving = true, errorMessageRes = null) }
-                viewModelScope.launch { save(owner, activityId, draft, state.isNew) }
+                val opening = savedStateHandle.get<String>(EditorKeys.OPENING)
+                viewModelScope.launch { save(SaveRequest(owner, activityId, draft, state.isNew, opening)) }
             }
         }
     }
@@ -175,20 +193,33 @@ class ActivityEditorViewModel @Inject constructor(
         )
     }
 
-    private suspend fun save(owner: String, activityId: String, draft: ActivityDraft, isNew: Boolean) {
-        val sameDay = routineRepository.getDay(owner, viewer, draft.date)
-        if (sameDay is DataResult.Failure) return showError(sameDay.error.messageRes())
-        val activities = (sameDay as DataResult.Success).value
-        validateActivity(draft, activities, editingId = activityId)?.let { return showError(it.messageRes()) }
+    /** One save, with the opening of the form that asked for it. */
+    private data class SaveRequest(
+        val owner: String,
+        val activityId: String,
+        val draft: ActivityDraft,
+        val isNew: Boolean,
+        val opening: String?
+    )
 
-        val write = if (isNew) {
+    /**
+     * A save can end after its form was closed with "back" and another one opened: its answer then belongs to
+     * nobody on screen, and must neither clear the new form nor close it.
+     */
+    private fun SaveRequest.isStillOpen() = savedStateHandle.get<String>(EditorKeys.OPENING) == opening
+
+    private suspend fun save(request: SaveRequest) {
+        val (owner, activityId, draft) = request
+        problemBeforeWriting(request)?.let { return request.showErrorIfOpen(it) }
+
+        val write = if (request.isNew) {
             routineRepository.createActivity(owner, activityId, draft, viewer)
         } else {
             routineRepository.updateActivity(owner, activityId, draft, viewer)
         }
         when (write) {
-            is DataResult.Failure -> showError(write.error.messageRes())
-            is DataResult.Success -> {
+            is DataResult.Failure -> request.showErrorIfOpen(write.error.messageRes())
+            is DataResult.Success -> if (request.isStillOpen()) {
                 onClose()
                 _events.send(
                     Event.Saved(
@@ -201,8 +232,23 @@ class ActivityEditorViewModel @Inject constructor(
         }
     }
 
+    /**
+     * The message (a string resource) of what stops a save: a failed read of the day, or an invalid or
+     * duplicate activity.
+     */
+    private suspend fun problemBeforeWriting(request: SaveRequest): Int? {
+        val sameDay = routineRepository.getDay(request.owner, viewer, request.draft.date)
+        if (sameDay is DataResult.Failure) return sameDay.error.messageRes()
+        val activities = (sameDay as DataResult.Success).value
+        return validateActivity(request.draft, activities, editingId = request.activityId)?.messageRes()
+    }
+
     private fun showError(@StringRes messageRes: Int) {
         _uiState.update { it.copy(isSaving = false, errorMessageRes = messageRes) }
+    }
+
+    private fun SaveRequest.showErrorIfOpen(@StringRes messageRes: Int) {
+        if (isStillOpen()) showError(messageRes)
     }
 
     private fun updateForm(transform: (ActivityEditorUiState) -> ActivityEditorUiState) {

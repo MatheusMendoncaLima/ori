@@ -17,7 +17,11 @@ sealed interface RepeatRule {
     /** The circles of the Samsung Clock: the chosen days, every week or every few weeks. */
     data class Weekly(val days: Set<DayOfWeek>, val intervalWeeks: Int = 1) : RepeatRule {
         override fun occursOn(date: LocalDate, start: LocalDate): Boolean {
-            val weeks = ChronoUnit.WEEKS.between(startOfWeek(start), startOfWeek(date))
+            // The fixed week of the repetitions, not the one on screen: the same days in every language.
+            val weeks = ChronoUnit.WEEKS.between(
+                startOfWeek(start, REPEAT_WEEK_START),
+                startOfWeek(date, REPEAT_WEEK_START)
+            )
             return date.dayOfWeek in days && weeks % intervalWeeks == 0L
         }
 
@@ -34,6 +38,15 @@ sealed interface RepeatRule {
     data object LastBusinessDayOfMonth : RepeatRule {
         override fun occursOn(date: LocalDate, start: LocalDate) =
             date == lastDayOf(date).with(TemporalAdjusters.previousOrSame(lastWorkingDayOfWeek(lastDayOf(date))))
+    }
+
+    /**
+     * Every month on the day of the month of the first day ("todo dia 15"). A day the month does not have (31 in
+     * April, 30 in February) falls on the last day of that month, so no month is skipped.
+     */
+    data object MonthlyOnStartDay : RepeatRule {
+        override fun occursOn(date: LocalDate, start: LocalDate) =
+            date.dayOfMonth == minOf(start.dayOfMonth, lastDayOf(date).dayOfMonth)
     }
 
     companion object {
@@ -60,6 +73,7 @@ private const val WEEKLY_PREFIX = "weekly"
 private const val WEEKLY_PARTS = 3
 private const val LAST_DAY = "last_day"
 private const val LAST_BUSINESS_DAY = "last_business_day"
+private const val MONTHLY_DAY = "monthly_day"
 
 /**
  * One short text, the same on the device, in the saved draft and in Firestore, where the rules
@@ -70,12 +84,14 @@ fun RepeatRule.toStoredText(): String = when (this) {
         "$WEEKLY_PREFIX:${days.map { it.value }.sorted().joinToString(",")}:$intervalWeeks"
     RepeatRule.LastDayOfMonth -> LAST_DAY
     RepeatRule.LastBusinessDayOfMonth -> LAST_BUSINESS_DAY
+    RepeatRule.MonthlyOnStartDay -> MONTHLY_DAY
 }
 
 /** Null for a text this version does not understand, so a newer rule is never misread. */
 fun repeatRuleFromStoredText(text: String?): RepeatRule? = when (text) {
     LAST_DAY -> RepeatRule.LastDayOfMonth
     LAST_BUSINESS_DAY -> RepeatRule.LastBusinessDayOfMonth
+    MONTHLY_DAY -> RepeatRule.MonthlyOnStartDay
     null -> null
     else -> weeklyFromStoredText(text)
 }

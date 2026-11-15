@@ -37,6 +37,7 @@ class DataStoreDevicePreferencesRepository @Inject constructor(
             stored[LIST_PRESENTATION_KEY] = updated.listPresentation.name
             stored[START_AREA_KEY] = updated.startArea.name
             stored[UPPERCASE_KEY] = updated.isUppercase
+            stored[INTRO_SEEN_KEY] = updated.hasSeenIntro
         }
     }
 
@@ -55,7 +56,8 @@ class DataStoreDevicePreferencesRepository @Inject constructor(
             density = enumOrDefault(this[DENSITY_KEY], defaults.density),
             listPresentation = enumOrDefault(this[LIST_PRESENTATION_KEY], defaults.listPresentation),
             startArea = enumOrDefault(this[START_AREA_KEY], defaults.startArea),
-            isUppercase = this[UPPERCASE_KEY] ?: defaults.isUppercase
+            isUppercase = this[UPPERCASE_KEY] ?: defaults.isUppercase,
+            hasSeenIntro = this[INTRO_SEEN_KEY] ?: defaults.hasSeenIntro
         )
     }
 
@@ -69,13 +71,11 @@ class DataStoreDevicePreferencesRepository @Inject constructor(
         )
     }
 
-    private inline fun <reified T : Enum<T>> enumOrDefault(name: String?, default: T): T =
-        enumValues<T>().firstOrNull { it.name == name } ?: default
-
     private companion object {
         val DENSITY_KEY = stringPreferencesKey("device_density")
         val LIST_PRESENTATION_KEY = stringPreferencesKey("device_list_presentation")
         val START_AREA_KEY = stringPreferencesKey("device_start_area")
+        val INTRO_SEEN_KEY = booleanPreferencesKey("device_intro_seen")
 
         // Name kept from the first version of this preference, so existing choices stay.
         val UPPERCASE_KEY = booleanPreferencesKey("display_uppercase")

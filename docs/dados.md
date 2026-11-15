@@ -58,14 +58,14 @@ careLinks/{caregiverUid}_{primaryUserUid}     dois participantes
   createdAt, revokedAt
 
 users/{uid}/aacBoards/{boardId}              dono: uid (usuário principal)
-  name, position, createdBy, createdAt, updatedAt
+  name, position, language (opcional), createdBy, createdAt, updatedAt
 users/{uid}/aacBoards/{boardId}/symbols/{id}
   label, phrase, image ("emoji:…" | "device:….jpg" | null), position,
   createdBy, createdAt, updatedAt
 users/{uid}/settings/preferences             só o dono
   textScale, theme, simplified, motion, updatedAt
 users/{uid}/aacSavedMessages/{id}            só o dono
-  text, createdAt
+  text, language (opcional), emoji (opcional), position (opcional), createdAt
 
 invitations/{código}                          só o servidor
   caregiverUid, caregiverName, status, createdAt, expiresAt, acceptedBy, acceptedAt
@@ -85,7 +85,7 @@ dados. Assim, a regra de propriedade é uma comparação simples
 | Perfil | O dono; quem tem vínculo ativo com ele | O dono cria uma vez; depois só altera o nome |
 | Rotina | O dono (tudo); responsável com `viewRoutines` (só tarefas `active`) | O dono cria, edita e exclui as que **ele** criou; responsável com `manageRoutines` gerencia as visíveis; o dono só conclui as do responsável com `ownerCanComplete` (detalhes em [funcionalidades/rotina.md](funcionalidades/rotina.md)) |
 | Pranchas e símbolos | O dono; responsável com `manageCommunication` | Os mesmos; fotos (`device:`) só o dono adiciona (detalhes em [funcionalidades/caa.md](funcionalidades/caa.md)) |
-| Frases salvas | Só o dono | Só o dono cria e exclui; nunca são editadas |
+| Frases salvas | Só o dono | Só o dono cria e exclui; depois de salva, só o emoji e o lugar (`position`) mudam |
 | Preferências da conta | Só o dono | Só o dono grava; nunca são apagadas (detalhes em [funcionalidades/preferencias.md](funcionalidades/preferencias.md)) |
 | Vínculo | Os dois participantes | Só o servidor cria; qualquer participante encerra; só o usuário principal muda permissões |
 | Convite | Ninguém pelo app | Só as Cloud Functions |
@@ -133,7 +133,9 @@ consulta. Assim não é preciso índice composto, e um dia tem no máximo 100 it
 
 **Vários dias numa consulta (03/11/2026):** relatórios e as marcas do mês leem um intervalo de `date` numa consulta, página de 100. O dono usa o índice automático de `date`; quem acompanha filtra também `status`, que usa o índice composto `routineTasks (status, date)` de `functions/firestore.indexes.json`. Até o índice ficar pronto depois de publicado, só as marcas do mês de quem acompanha deixam de aparecer.
 
-**Esquema do banco local:** o Room exporta o esquema para `android/app/schemas` a partir da versão 3. Uma migração nova pode ser conferida contra o esquema antigo com `MigrationTestHelper`.
+**Esquema do banco local:** o Room exporta o esquema para `android/app/schemas` a partir da versão 3. Uma migração nova pode ser conferida contra o esquema antigo com `MigrationTestHelper`. A versão 4 (08/11/2026, `MIGRATION_3_4`) acrescenta a coluna `language` às pranchas e às frases salvas; o teste é `OriDatabaseMigrationTest`.
+
+**Idioma das pranchas e frases (08/11/2026):** o campo `language` foi acrescentado como manda a seção 7: opcional, aceito pelas regras publicadas antes da versão do app que o grava, e ausente nos documentos de antes, que são lidos como português (`OLD_CONTENT_LANGUAGE`), o único idioma do app até então. Veja [caa.md](funcionalidades/caa.md#idioma-de-cada-prancha-e-frase-08112026).
 
 **Limite de fotos:** continua conferido só pelo app. Um contador nas regras exigiria transação, que não funciona offline; o lugar certo é uma Cloud Function, quando houver o plano Blaze.
 
@@ -338,3 +340,30 @@ Fotos de perfil e de símbolos ficam no Firestore, em `users/{dono}/photos/{id}`
 
 **Onde vale:** rotina, Tarefas e Organizar pranchas. Os avisos de gravação da comunicação, das preferências e dos vínculos já esperavam a resposta do servidor por 3 segundos.
 
+## Banco local versão 5 e campos novos (09/11/2026)
+
+- **Room 5 (`MIGRATION_4_5`):** `saved_messages.emoji`, `aac_symbols.color` e `aac_symbols.wordClass`, todos opcionais
+  (o que já existe fica sem valor e continua como antes). Esquema exportado em `app/schemas/.../5.json`. Teste:
+  `OriDatabaseMigrationTest`.
+- **Firestore:** `aacSavedMessages/{id}.emoji` (opcional; a única coisa que muda depois de salvar), `symbols/{id}.color`
+  e `symbols/{id}.wordClass` (valores fixos, conferidos pelas regras) e `routineSeries/{id}.repeat` aceita
+  `monthly_day`. Nada disso pede índice novo.
+
+## Banco local versão 6 e ordem das frases (12/11/2026)
+
+- **Room 6 (`MIGRATION_5_6`):** `saved_messages.position`, opcional. O que já existe fica sem posição e continua na
+  mesma ordem (a mais nova em cima). Esquema em `app/schemas/.../6.json`. Teste: `OriDatabaseMigrationTest`.
+- **Firestore:** `aacSavedMessages/{id}.position` (opcional, inteiro de 0 a 999). A consulta continua ordenada só por
+  `createdAt`, sem índice novo; a ordem escolhida é aplicada depois de ler. Veja
+  [caa.md](funcionalidades/caa.md#pedidos-de-12112026-soltar-no-lugar-e-ordem-das-frases).
+
+## Consentimento, exportação e exclusão da conta (09/11/2026)
+
+- **`users/{uid}/legal/consent`:** `version`, `isAdult`, `guardianConsent`, `acceptedAt`. Só a pessoa lê e grava;
+  pode ser gravado antes do perfil (o consentimento vem antes de qualquer dado). Cópia no DataStore do aparelho
+  (`legal_consent_<uid>`), para o app abrir offline.
+- **`users/{uid}.deletingAt`:** marca do perfil enquanto a conta é apagada; com ela, as regras deixam a dona apagar
+  as atividades reservadas por um responsável.
+- **Regras novas:** a dona apaga o perfil e as preferências da conta; um vínculo encerrado pode ser apagado por
+  qualquer uma das duas pessoas. Testes: `functions/security-tests/test/accountDeletion.test.mjs`.
+- Veja [legal/README.md](legal/README.md) para o fluxo completo.

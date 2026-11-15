@@ -145,7 +145,7 @@ class PreferenceEffectsTest {
         val step = RoutineStepUiModel(
             id = "a",
             title = "Café",
-            timeLabel = "07:30",
+            time = java.time.LocalTime.of(7, 30),
             badges = listOf(ActivityBadge.SET_BY_CAREGIVER)
         )
         render(device(DevicePreferences(listPresentation = ListPresentation.SUMMARY))) {

@@ -1,6 +1,5 @@
 package com.oriteam.ori.ui.components.dialog
 
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -24,10 +23,10 @@ fun OriConfirmationDialog(
     isDestructive: Boolean = false
 ) {
     val colors = MaterialTheme.colorScheme
-    AlertDialog(
+    OriAlertDialog(
         onDismissRequest = onDismiss,
         modifier = modifier,
-        title = { Text(text = title, style = MaterialTheme.typography.headlineSmall) },
+        title = title,
         text = { Text(text = message, style = MaterialTheme.typography.bodyMedium) },
         confirmButton = {
             TextButton(onClick = onConfirm) {

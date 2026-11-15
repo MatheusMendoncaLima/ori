@@ -59,9 +59,11 @@ fun SettingsSwitchItem(
             colors = SwitchDefaults.colors(
                 checkedThumbColor = colors.onPrimary,
                 checkedTrackColor = colors.primary,
-                uncheckedThumbColor = colors.surface,
+                // Off, the border and the thumb carry the contrast (3:1 for a control): the light track alone,
+                // with a border of the same color, made an off switch almost invisible (1.25:1 in the light theme).
+                uncheckedThumbColor = colors.onSurfaceVariant,
                 uncheckedTrackColor = LocalOriColors.current.switchTrackInactive,
-                uncheckedBorderColor = LocalOriColors.current.switchTrackInactive
+                uncheckedBorderColor = colors.onSurfaceVariant
             )
         )
     }

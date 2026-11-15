@@ -1,0 +1,32 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Relatórios, em espanhol. -->
+    <string name="reports_title">Informes</string>
+    <string name="reports_this_week">Esta semana</string>
+    <string name="reports_this_month">Este mes</string>
+    <string name="reports_summary">Resumen general</string>
+    <!-- The number is shown beside it, in large type. -->
+    <plurals name="reports_tasks_done" tools:ignore="ImpliedQuantity">
+        <item quantity="one">Actividad completada</item>
+        <item quantity="many">Actividades completadas</item>
+        <item quantity="other">Actividades completadas</item>
+    </plurals>
+    <string name="reports_completion">De lo planeado</string>
+    <!-- The number is shown beside it, in large type. -->
+    <plurals name="reports_aac_usage" tools:ignore="ImpliedQuantity">
+        <item quantity="one">Vez que se comunicó</item>
+        <item quantity="many">Veces que se comunicó</item>
+        <item quantity="other">Veces que se comunicó</item>
+    </plurals>
+    <string name="reports_aac_usage_note">La comunicación se cuenta solo en este dispositivo: hablar, mostrar la frase o tocar una frase lista.</string>
+    <string name="reports_daily">Progreso diario</string>
+    <string name="reports_chart_description">Gráfico del porcentaje de actividades completadas por día. La lista detallada muestra los mismos valores.</string>
+    <string name="reports_details_show">Ver informes detallados</string>
+    <string name="reports_details_hide">Ocultar detalles</string>
+    <plurals name="reports_day_line">
+        <item quantity="one">%1$d de %2$d completada</item>
+        <item quantity="many">%1$d de %2$d completadas</item>
+        <item quantity="other">%1$d de %2$d completadas</item>
+    </plurals>
+    <string name="reports_no_data_title">Todavía no hay datos</string>
+    <string name="reports_no_data_message">Cuando haya actividades en este período, el resumen aparecerá aquí.</string>
+</resources>

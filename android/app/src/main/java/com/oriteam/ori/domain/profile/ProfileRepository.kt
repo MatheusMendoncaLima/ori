@@ -15,7 +15,12 @@ data class UserProfile(
     val displayName: String
 ) {
     val isLocal: Boolean get() = uid == LOCAL_OWNER_UID
+
+    /** The first word of the name, for a short greeting ("Olá, Ana!"); empty when there is no name. */
+    val firstName: String get() = displayName.trim().split(WHITESPACE).first()
 }
+
+private val WHITESPACE = Regex("\\s+")
 
 /**
  * Owner of the data kept only on this device. Firebase ids are 28 characters long, so this value

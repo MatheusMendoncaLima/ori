@@ -1,10 +1,14 @@
 package com.oriteam.ori.ui.app.screens.routine
 
+import android.os.Looper
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.lifecycle.SavedStateHandle
@@ -17,9 +21,14 @@ import com.oriteam.ori.testing.OriTestWindow
 import com.oriteam.ori.testing.activity
 import com.oriteam.ori.testing.fixedClock
 import com.oriteam.ori.testing.snapshotOf
+import com.oriteam.ori.ui.app.screens.common.LOADING_GRACE_MILLIS
+import com.oriteam.ori.ui.components.text.LocalTextCaseToggle
+import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Shadows.shadowOf
+import java.time.Duration
 
 /** The routine decides one or two panes from the space it receives, not from the device type. */
 @RunWith(AndroidJUnit4::class)
@@ -36,12 +45,14 @@ class RoutineScreenLayoutTest {
         val viewModel = RoutineViewModel(routines, fixedClock, SavedStateHandle())
         composeRule.setContent {
             OriTestWindow(widthDp = widthDp, heightDp = 800) {
-                RoutineRoute(
-                    ownerUid = OWNER,
-                    viewer = RoutineViewer.Owner,
-                    title = "Minha rotina",
-                    viewModel = viewModel
-                )
+                CompositionLocalProvider(LocalTextCaseToggle provides {}) {
+                    RoutineRoute(
+                        ownerUid = OWNER,
+                        viewer = RoutineViewer.Owner,
+                        title = "Minha rotina",
+                        viewModel = viewModel
+                    )
+                }
             }
         }
         return viewModel
@@ -56,8 +67,26 @@ class RoutineScreenLayoutTest {
         routines.routine.value = null
         composeRule.runOnIdle { viewModel.onSelectDate(DAY.plusDays(1)) }
 
+        // While the next day is on its way, the details wait instead of saying the activity is gone.
+        composeRule.onNodeWithText("Atividade não encontrada").assertDoesNotExist()
+
+        // A day that takes long says so, in the list and in the details.
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(LOADING_GRACE_MILLIS))
         composeRule.onNodeWithText("Atividade não encontrada").assertDoesNotExist()
         composeRule.onAllNodesWithText("Carregando…").assertCountEquals(2)
+    }
+
+    @Test
+    fun `choosing another week closes the open details instead of saying the activity is gone`() {
+        render(widthDp = 1000)
+        composeRule.onNodeWithText("Escovar os dentes").performClick()
+        composeRule.onNodeWithText("Depois do café").assertIsDisplayed()
+
+        composeRule.onNodeWithContentDescription("Próxima semana").performClick()
+
+        composeRule.onNodeWithText("Escolha uma atividade").assertIsDisplayed()
+        composeRule.onNodeWithText("Depois do café").assertDoesNotExist()
+        composeRule.onNodeWithText("Atividade não encontrada").assertDoesNotExist()
     }
 
     @Test
@@ -69,6 +98,28 @@ class RoutineScreenLayoutTest {
 
         composeRule.onNodeWithText("Depois do café").assertIsDisplayed()
         composeRule.onNodeWithText("Adicionar atividade").assertIsDisplayed()
+    }
+
+    @Test
+    fun `side by side there is one Aa, at the right edge, not one per pane`() {
+        render(widthDp = 1000)
+        composeRule.onAllNodesWithContentDescription("Mostrar textos em letras maiúsculas").assertCountEquals(1)
+
+        composeRule.onNodeWithText("Escovar os dentes").performClick()
+        composeRule.onAllNodesWithContentDescription("Mostrar textos em letras maiúsculas").assertCountEquals(1)
+    }
+
+    @Test
+    fun `in a wide area back closes the open details instead of leaving the routine`() {
+        render(widthDp = 1000)
+        composeRule.onNodeWithText("Escovar os dentes").performClick()
+        composeRule.onNodeWithText("Depois do café").assertIsDisplayed()
+
+        composeRule.runOnUiThread { composeRule.activity.onBackPressedDispatcher.onBackPressed() }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Escolha uma atividade").assertIsDisplayed()
+        assertFalse(composeRule.activity.isFinishing)
     }
 
     @Test

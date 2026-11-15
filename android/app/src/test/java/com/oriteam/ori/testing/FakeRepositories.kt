@@ -16,10 +16,11 @@ import com.oriteam.ori.domain.routine.RoutineSnapshot
 import com.oriteam.ori.domain.routine.RoutineTask
 import com.oriteam.ori.domain.routine.RoutineViewer
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onStart
 import java.time.LocalDate
 
@@ -56,6 +57,9 @@ class FakeRoutineRepository : RoutineRepository {
 
     /** When a day is here, it answers with its own activities instead of [routine]. */
     var routineByDay: Map<LocalDate, DataResult<RoutineSnapshot>> = emptyMap()
+
+    /** How long a day of [routineByDay] takes to arrive, as a read of the device cache does. */
+    var dayReadMillis = 0L
     val observedDays = mutableListOf<LocalDate>()
 
     /** Answer of the one-time day read used for duplicate detection. */
@@ -76,8 +80,15 @@ class FakeRoutineRepository : RoutineRepository {
         ownerUid: String,
         viewer: RoutineViewer,
         date: LocalDate
-    ): Flow<DataResult<RoutineSnapshot>> =
-        (routineByDay[date]?.let { flowOf(it) } ?: routine.filterNotNull()).onStart { observedDays += date }
+    ): Flow<DataResult<RoutineSnapshot>> {
+        val ofDay = routineByDay[date]?.let { day ->
+            flow {
+                delay(dayReadMillis)
+                emit(day)
+            }
+        }
+        return (ofDay ?: routine.filterNotNull()).onStart { observedDays += date }
+    }
 
     override suspend fun getDay(ownerUid: String, viewer: RoutineViewer, date: LocalDate) = dayResult
 

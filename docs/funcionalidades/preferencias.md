@@ -31,12 +31,14 @@ Ficam em `users/{uid}/settings/preferences`, com uma cópia local no DataStore.
 | Interface simplificada | Ligada · Desligada | Tira bordas de cartões, ícones ao lado do texto nas listas, o ícone dos estados vazios e os arcos decorativos | `OriCard`, `OriListItem`, `EmptyState`, `OriDecorativeArcs` |
 | Animações (`MotionLevel`) | Igual às do sistema · Expressivas · Sutis · Reduzidas · Desligadas | Veja a tabela abaixo | `OriMotion`, usado pelos componentes |
 
-| Nível de animação | Enfeites | Avisos de mudança | Balanço | Rolagem até um ponto |
-|---|---|---|---|---|
-| Expressivas | Duração completa | Duração completa | Sim | Animada |
-| Sutis | 60% da duração | 60% da duração | Não | Animada |
-| Reduzidas | Mudam na hora | 40% da duração | Não | Vai direto |
-| Desligadas | Mudam na hora | Mudam na hora | Não | Vai direto |
+| Nível de animação | Enfeites | Avisos de mudança | Movimento (deslizar, crescer, afundar) | Balanço | Rolagem até um ponto |
+|---|---|---|---|---|---|
+| Expressivas | Duração completa | Duração completa | Sim | Sim | Animada |
+| Sutis | 60% da duração | 60% da duração | Sim | Não | Animada |
+| Reduzidas | Mudam na hora | 40% da duração | Não: só esmaece | Não | Vai direto |
+| Desligadas | Mudam na hora | Mudam na hora | Não | Não | Vai direto |
+
+Onde cada animação aparece e as peças prontas para criar uma nova: [design-system.md](../design-system.md#movimento-animações).
 
 "Igual às do sistema" vira Desligadas quando o Android está com as animações removidas, e Expressivas nos outros casos. Desligar animação nunca esconde informação: o valor final aparece na hora.
 
@@ -48,9 +50,10 @@ Ficam no DataStore local.
 |---|---|---|---|
 | Espaçamento (`ContentDensity`) | Compacto · Confortável · Amplo | Muda a margem interna dos cartões, a altura e o espaço entre itens de lista e o espaço entre símbolos. Linhas de lista nunca ficam abaixo de 48 dp | `OriCard`, `OriListItem`, itens de configuração, listas, `AacBoardGrid` |
 | Listas (`ListPresentation`) | Detalhadas · Resumidas | Resumidas escondem a linha de apoio e os avisos dos cartões de atividade. O restante continua ao abrir o item | `OriListItem`, `OriMenuRow`, `RoutineTimeline` |
-| Abrir o app em (`StartArea`) | Início · Minha rotina · Formar frase | Define a primeira área ao abrir. Mudar a opção não tira a pessoa da tela atual | `startDestinationFor`, `MainScaffold` |
+| Abrir o app em (`StartArea`) | Início · Minha rotina · Frases | Define a primeira área ao abrir. Mudar a opção não tira a pessoa da tela atual | `startDestinationFor`, `MainScaffold` |
 | Letras maiúsculas | Ligada · Desligada | Todos os textos do app em maiúsculas, inclusive o que a pessoa escreveu. Muda também pelo botão "Aa" no topo das telas. Fica no aparelho, pois vale antes do login | `ui/components/text/Text.kt`, `OriTextField` |
-| Símbolos: tamanho, rótulos, o que um toque faz | Veja [caa.md](caa.md#8-preferências-e-grade-adaptável) | Colunas da grade e modo de montar a mensagem. Também podem ser mudados dentro de Formar frase | `AacBoardGrid`, `AacCommunicateViewModel` |
+| Símbolos: tamanho, rótulos, o que um toque faz | Veja [caa.md](caa.md#8-preferências-e-grade-adaptável) | Colunas da grade e modo de montar a mensagem. Também podem ser mudados dentro de Frases | `AacBoardGrid`, `AacCommunicateViewModel` |
+| Voz da CAA (`VoiceSettings`) | Estilo (Grave · Natural · Aguda · Criança) · voz do aparelho · tom e velocidade de 50% a 200% | A voz com que as pranchas falam. Fica no aparelho, porque as vozes instaladas mudam de um aparelho para outro. Veja [caa.md](caa.md#voz-07112026) | `AndroidSpeechSynthesizer`, `VoiceSettingsSection` |
 
 **O que nunca é removido:** as preferências tiram enfeites e texto secundário, mas nenhum botão, nenhum rótulo de ação e nenhuma área de toque mínima. O ícone de erro também fica, porque um aviso não é enfeite.
 
@@ -168,3 +171,24 @@ cd functions/security-tests && npm test
 3. **Do aparelho:** acrescente em `DevicePreferences` e no `DataStoreDevicePreferencesRepository`.
 4. **Aplique no componente compartilhado**, por `OriAppearance`, e não em cada tela.
 5. **Teste o efeito real** em `PreferenceEffectsTest`. Uma opção sem efeito visível não deve existir.
+
+## Mudanças de 07/11/2026 (segunda rodada)
+
+- **Cores do menu de Configurações:** só "Preferências de comunicação" tem a cor de uma área (Comunicação); as
+  outras linhas ficam neutras. Substituído em 09/11/2026: cada página tem a sua cor, como no wireframe (veja
+  [design-system.md](../design-system.md#o-que-cada-cor-quer-dizer-09112026)).
+- **Títulos curtos (09/11/2026):** na barra do topo, "Acessibilidade" e "Comunicação" (antes "Configurações de
+  acessibilidade" e "Preferências de comunicação", que quebravam em duas linhas no celular). A linha do menu de
+  Configurações tem o mesmo nome curto, com a descrição embaixo.
+- **Privacidade:** a confirmação diz "Apagar", o mesmo verbo do botão que a abriu (antes, "Excluir").
+- **Sobre** rola: com texto muito ampliado numa janela baixa, nada fica cortado.
+- **Voz da CAA:** veja [caa.md](caa.md#mudanças-de-07112026-segunda-rodada).
+
+## Mudanças de 09/11/2026 (pedidos)
+
+- **Arrastar para mudar a ordem** (antes "Arrastar símbolos em Montar"; `AacPreferences.dragToReorder`, no aparelho):
+  ligado por padrão; vale para os símbolos em Montar e, desde 12/11/2026, para as frases em Prontas (as salvas e as
+  que vêm com o app, cuja ordem fica em `AacPreferences.readyPhraseOrder`). Veja
+  [caa.md](caa.md#pedidos-de-09112026-emoji-das-frases-arrastar-cor-e-tipo-de-palavra).
+- **A abertura do logo** é tocada uma vez por aparelho: `DevicePreferences.hasSeenIntro`, gravado só quando a
+  animação termina (sair no meio toca de novo na próxima vez).

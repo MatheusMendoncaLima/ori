@@ -136,22 +136,22 @@ class RoutedAacBoardRepository(
 
     override fun newSymbolId(ownerUid: String, boardId: String) = source(ownerUid).newSymbolId(ownerUid, boardId)
 
-    override suspend fun createBoard(ownerUid: String, name: String, position: Int) =
-        source(ownerUid).createBoard(ownerUid, name, position)
+    override suspend fun createBoard(ownerUid: String, name: String, position: Int, language: String) =
+        source(ownerUid).createBoard(ownerUid, name, position, language)
 
     override suspend fun createBoardWithSymbols(
         ownerUid: String,
         name: String,
         position: Int,
-        symbols: List<SymbolDraft>
-    ) = source(ownerUid).createBoardWithSymbols(ownerUid, name, position, symbols)
+        symbols: List<SymbolDraft>,
+        language: String
+    ) = source(ownerUid).createBoardWithSymbols(ownerUid, name, position, symbols, language)
 
     override suspend fun renameBoard(ownerUid: String, boardId: String, name: String) =
         source(ownerUid).renameBoard(ownerUid, boardId, name)
 
-    override suspend fun deleteBoard(ownerUid: String, boardId: String) = source(
-        ownerUid
-    ).deleteBoard(ownerUid, boardId)
+    override suspend fun deleteBoard(ownerUid: String, boardId: String) =
+        source(ownerUid).deleteBoard(ownerUid, boardId)
 
     override suspend fun createSymbol(
         ownerUid: String,
@@ -186,7 +186,14 @@ class RoutedSavedMessageRepository(
 
     override fun observeSavedMessages(ownerUid: String) = source(ownerUid).observeSavedMessages(ownerUid)
 
-    override suspend fun saveMessage(ownerUid: String, text: String) = source(ownerUid).saveMessage(ownerUid, text)
+    override suspend fun saveMessage(ownerUid: String, text: String, language: String, emoji: String?, position: Int?) =
+        source(ownerUid).saveMessage(ownerUid, text, language, emoji, position)
+
+    override suspend fun reorderSavedMessages(ownerUid: String, positions: Map<String, Int>) =
+        source(ownerUid).reorderSavedMessages(ownerUid, positions)
+
+    override suspend fun setSavedMessageEmoji(ownerUid: String, messageId: String, emoji: String?) =
+        source(ownerUid).setSavedMessageEmoji(ownerUid, messageId, emoji)
 
     override suspend fun deleteSavedMessage(ownerUid: String, messageId: String) =
         source(ownerUid).deleteSavedMessage(ownerUid, messageId)

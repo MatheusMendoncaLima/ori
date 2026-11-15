@@ -1,5 +1,6 @@
 package com.oriteam.ori.ui.components.form
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.CircleShape
@@ -8,12 +9,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import com.oriteam.ori.ui.components.motion.pressScale
 import com.oriteam.ori.ui.components.text.Text
 import com.oriteam.ori.ui.theme.OriDimensions
 import com.oriteam.ori.ui.theme.OriSpacing
@@ -36,11 +39,13 @@ fun OriPrimaryButton(
     enabled: Boolean = true,
     isFullWidth: Boolean = true
 ) {
+    val interaction = remember { MutableInteractionSource() }
     Button(
         onClick = onClick,
         enabled = enabled,
         shape = CircleShape,
-        modifier = modifier.buttonSize(isFullWidth)
+        interactionSource = interaction,
+        modifier = modifier.buttonSize(isFullWidth).pressScale(interaction)
     ) {
         ButtonLabel(text)
     }
@@ -56,11 +61,13 @@ fun OriSecondaryButton(
     color: Color = Color.Unspecified,
     isFullWidth: Boolean = true
 ) {
+    val interaction = remember { MutableInteractionSource() }
     OutlinedButton(
         onClick = onClick,
         enabled = enabled,
         shape = CircleShape,
-        modifier = modifier.buttonSize(isFullWidth)
+        interactionSource = interaction,
+        modifier = modifier.buttonSize(isFullWidth).pressScale(interaction)
     ) {
         ButtonLabel(text, color.takeIf { enabled } ?: Color.Unspecified)
     }

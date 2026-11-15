@@ -3,7 +3,6 @@ package com.oriteam.ori.ui.app.screens.aac
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -11,6 +10,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import com.oriteam.ori.R
+import com.oriteam.ori.ui.components.dialog.OriAlertDialog
 import com.oriteam.ori.ui.components.dialog.OriConfirmationDialog
 import com.oriteam.ori.ui.components.form.FormMessage
 import com.oriteam.ori.ui.components.form.FormMessageType
@@ -55,11 +55,9 @@ private fun BoardNameDialogView(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    OriAlertDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(stringResource(if (dialog.boardId == null) R.string.aac_new_board else R.string.aac_rename_board))
-        },
+        title = stringResource(if (dialog.boardId == null) R.string.aac_new_board else R.string.aac_rename_board),
         text = {
             Column {
                 LabeledTextField(

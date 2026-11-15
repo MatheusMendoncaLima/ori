@@ -1,7 +1,6 @@
 package com.oriteam.ori.data.local
 
 import androidx.room.withTransaction
-import com.oriteam.ori.domain.model.TaskStatus
 import com.oriteam.ori.domain.profile.LOCAL_OWNER_UID
 import com.oriteam.ori.domain.routine.ActivityDraft
 import com.oriteam.ori.domain.routine.MAX_ROUTINE_SERIES
@@ -14,6 +13,7 @@ import com.oriteam.ori.domain.routine.RoutineSeriesSnapshot
 import com.oriteam.ori.domain.routine.RoutineSnapshot
 import com.oriteam.ori.domain.routine.RoutineTask
 import com.oriteam.ori.domain.routine.RoutineViewer
+import com.oriteam.ori.domain.routine.TaskStatus
 import com.oriteam.ori.domain.routine.repeatRuleFromStoredText
 import com.oriteam.ori.domain.routine.toStoredText
 import kotlinx.coroutines.flow.map

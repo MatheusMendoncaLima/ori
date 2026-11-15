@@ -21,6 +21,7 @@ import com.oriteam.ori.ui.components.list.SectionHeader
 import com.oriteam.ori.ui.components.navigation.OriTopBar
 import com.oriteam.ori.ui.components.settings.SettingsChoice
 import com.oriteam.ori.ui.components.settings.SettingsChoiceGroup
+import com.oriteam.ori.ui.components.settings.SettingsSwitchItem
 import com.oriteam.ori.ui.theme.OriDimensions
 import com.oriteam.ori.ui.theme.OriSpacing
 
@@ -47,7 +48,11 @@ private val messageModeLabels = mapOf(
 @Composable
 fun AacPreferencesRoute(onNavigateBack: () -> Unit, viewModel: AacPreferencesViewModel = hiltViewModel()) {
     Column(modifier = Modifier.fillMaxSize()) {
-        OriTopBar(title = stringResource(R.string.aac_preferences), onNavigateBack = onNavigateBack)
+        OriTopBar(
+            maxWidth = OriDimensions.FormMaxWidth,
+            title = stringResource(R.string.settings_communication_title),
+            onNavigateBack = onNavigateBack
+        )
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             CenteredContent(maxWidth = OriDimensions.FormMaxWidth) {
                 AacPreferenceChoices(viewModel)
@@ -62,7 +67,7 @@ fun AacPreferencesRoute(onNavigateBack: () -> Unit, viewModel: AacPreferencesVie
     }
 }
 
-/** The symbol choices; the general preferences screen shows the same ones. */
+/** The choices of communication, the voice included; the general preferences screen shows the same ones. */
 @Composable
 fun AacPreferenceChoices(viewModel: AacPreferencesViewModel = hiltViewModel()) {
     val preferences by viewModel.preferences.collectAsStateWithLifecycle()
@@ -75,6 +80,7 @@ fun AacPreferenceChoices(viewModel: AacPreferencesViewModel = hiltViewModel()) {
         selectedValue = preferences.messageMode,
         onValueSelected = viewModel::onMessageModeChange
     )
+    VoiceSettingsSection()
     SettingsChoiceGroup(
         title = stringResource(R.string.aac_preference_size),
         choices = SymbolSize.entries.map { SettingsChoice(it, stringResource(sizeLabels.getValue(it))) },
@@ -88,5 +94,15 @@ fun AacPreferenceChoices(viewModel: AacPreferencesViewModel = hiltViewModel()) {
         },
         selectedValue = preferences.labelMode,
         onValueSelected = viewModel::onLabelModeChange
+    )
+    SettingsSwitchItem(
+        title = stringResource(R.string.aac_preference_drag),
+        description = stringResource(
+            R.string.aac_preference_drag_description,
+            stringResource(R.string.aac_tab_build),
+            stringResource(R.string.aac_tab_ready)
+        ),
+        checked = preferences.dragToReorder,
+        onCheckedChange = viewModel::onDragToReorderChange
     )
 }

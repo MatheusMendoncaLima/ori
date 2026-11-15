@@ -1,11 +1,7 @@
 package com.oriteam.ori.data.photos
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Matrix
-import android.media.ExifInterface
 import android.net.Uri
 import android.util.Log
 import androidx.core.graphics.scale
@@ -26,8 +22,8 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
-import java.io.InputStream
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
 private const val TAG = "OriPhotos"
@@ -53,6 +49,12 @@ class DevicePhotoStore @Inject constructor(
 
     private val directory: File get() = File(context.filesDir, PHOTO_DIRECTORY)
 
+    /**
+     * Files known to be on the device. The screens ask for the path of every photo at each change (a symbol
+     * tapped, a list updated), often on the main thread: a known file is answered without asking the disk.
+     */
+    private val presentFiles: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
     override suspend fun importPhoto(sourceUri: String): PhotoImportResult = withContext(Dispatchers.IO) {
         val uri = sourceUri.toUri()
         val bitmap = decodeReduced(uri) ?: return@withContext PhotoImportResult.Failed(PhotoImportError.UNREADABLE)
@@ -64,11 +66,17 @@ class DevicePhotoStore @Inject constructor(
         }
     }
 
-    override fun pathOf(photo: StoredPhoto): String? =
-        fileOf(photo)?.takeIf { it.isFile }?.absolutePath
+    override fun pathOf(photo: StoredPhoto): String? {
+        val file = fileOf(photo) ?: return null
+        if (file.name in presentFiles) return file.absolutePath
+        return file.takeIf { it.isFile }?.absolutePath?.also { presentFiles += file.name }
+    }
 
     override suspend fun delete(photo: StoredPhoto) {
-        withContext(Dispatchers.IO) { fileOf(photo)?.delete() }
+        withContext(Dispatchers.IO) {
+            presentFiles -= photo.fileName
+            fileOf(photo)?.delete()
+        }
     }
 
     override suspend fun readBytes(photo: StoredPhoto): ByteArray? = withContext(Dispatchers.IO) {
@@ -107,37 +115,7 @@ class DevicePhotoStore @Inject constructor(
     private fun fileOf(photo: StoredPhoto): File? =
         photo.fileName.takeIf { SAFE_FILE_NAME.matches(it) }?.let { File(directory, it) }
 
-    /**
-     * Decodes at a reduced resolution, so a huge picture never fills the memory. A file that
-     * cannot be opened or is not an image leaves the bounds empty and returns null.
-     */
-    private fun decodeReduced(uri: Uri): Bitmap? {
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        open(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
-        val options = BitmapFactory.Options().apply {
-            inSampleSize = sampleSizeFor(bounds.outWidth, bounds.outHeight, MAX_PHOTO_SIDE_PX)
-        }
-        return open(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
-            ?.let { scaledToFit(it, MAX_PHOTO_SIDE_PX).rotated(rotationOf(uri)) }
-    }
-
-    private fun open(uri: Uri): InputStream? = try {
-        context.contentResolver.openInputStream(uri)
-    } catch (exception: IOException) {
-        Log.w(TAG, "Photo could not be opened: ${exception.javaClass.simpleName}")
-        null
-    } catch (exception: SecurityException) {
-        Log.w(TAG, "Photo access was refused: ${exception.javaClass.simpleName}")
-        null
-    }
-
-    /** Camera photos are often stored sideways with a rotation tag; the copy is stored upright. */
-    private fun rotationOf(uri: Uri): Int = try {
-        open(uri)?.use { ExifInterface(it).rotationDegrees } ?: 0
-    } catch (_: IOException) {
-        0
-    }
+    private fun decodeReduced(uri: Uri): Bitmap? = context.contentResolver.readReducedPicture(uri, MAX_PHOTO_SIDE_PX)
 
     private fun write(bitmap: Bitmap, fileName: String): Boolean = writeBytes(compressedWithinLimit(bitmap), fileName)
 
@@ -152,7 +130,7 @@ class DevicePhotoStore @Inject constructor(
             Log.w(TAG, "Photo could not be stored: ${exception.javaClass.simpleName}")
             false
         }
-        if (!isWritten) temporary.delete()
+        if (isWritten) presentFiles += fileName else temporary.delete()
         return isWritten
     }
 
@@ -178,37 +156,3 @@ internal fun compressedWithinLimit(bitmap: Bitmap, maxBytes: Int = MAX_PHOTO_BYT
         )
     }
 }
-
-/** Largest power of two that keeps both sides at least [maxSide] (what BitmapFactory supports). */
-internal fun sampleSizeFor(width: Int, height: Int, maxSide: Int): Int {
-    var sampleSize = 1
-    while (maxOf(width, height) / (sampleSize * 2) >= maxSide) sampleSize *= 2
-    return sampleSize
-}
-
-private fun scaledToFit(bitmap: Bitmap, maxSide: Int): Bitmap {
-    val largest = maxOf(bitmap.width, bitmap.height)
-    if (largest <= maxSide) return bitmap
-    val scale = maxSide.toFloat() / largest
-    return bitmap.scale(
-        (bitmap.width * scale).toInt().coerceAtLeast(1),
-        (bitmap.height * scale).toInt().coerceAtLeast(1)
-    )
-}
-
-private fun Bitmap.rotated(degrees: Int): Bitmap {
-    if (degrees == 0) return this
-    val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
-    return Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
-}
-
-// The platform ExifInterface is reliable from API 25 and minSdk is 26, so the AndroidX copy
-// (an extra dependency) is not needed.
-@get:SuppressLint("ExifInterface")
-private val ExifInterface.rotationDegrees: Int
-    get() = when (getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
-        ExifInterface.ORIENTATION_ROTATE_90 -> 90
-        ExifInterface.ORIENTATION_ROTATE_180 -> 180
-        ExifInterface.ORIENTATION_ROTATE_270 -> 270
-        else -> 0
-    }

@@ -11,8 +11,23 @@ data class AacBoard(
     val name: String,
     /** Place in the list of boards; lower comes first. */
     val position: Int,
-    val createdBy: String
+    val createdBy: String,
+    /**
+     * The language the board is written in ("pt-BR"), which the voice and the grammar follow. Null for a board
+     * from before boards recorded it, which is in Portuguese (see [contentLanguage]).
+     */
+    val language: String? = null
 )
+
+/**
+ * The language of a board or saved phrase that has none. Boards and phrases record it since 08/11/2026, and
+ * before that the app was only in Portuguese, so they are Portuguese whatever the app's language is now:
+ * following the app's would read a Portuguese board with an English voice.
+ */
+const val OLD_CONTENT_LANGUAGE = "pt-BR"
+
+/** The language the board is in: its own, or Portuguese for one from before boards recorded it. */
+val AacBoard.contentLanguage: String get() = language ?: OLD_CONTENT_LANGUAGE
 
 /**
  * One symbol of a board: what is shown ([label] and [image]) and what is said ([spokenText]).
@@ -26,7 +41,11 @@ data class AacSymbol(
     val phrase: String?,
     val image: SymbolImage?,
     val position: Int,
-    val createdBy: String
+    val createdBy: String,
+    /** The color the person chose for the tile; null follows the kind of word. */
+    val color: SymbolColor? = null,
+    /** What the word is, chosen by the person for a word the grammar does not know; null lets the tables say. */
+    val wordClass: WordClass? = null
 ) {
     val spokenText: String get() = phrase ?: label
 }
@@ -49,8 +68,35 @@ sealed interface SymbolImage {
 data class SymbolDraft(
     val label: String,
     val phrase: String?,
-    val image: SymbolImage?
+    val image: SymbolImage?,
+    val color: SymbolColor? = null,
+    val wordClass: WordClass? = null
 )
+
+/**
+ * A tile color the person may choose in the symbol form, stored by [key]. The soft colors are the app's own;
+ * [NONE] keeps the tile plain even when the word has a kind with a color.
+ */
+/** How [WordClass] is stored: short lowercase words, checked by the rules. Unknown text reads as no choice. */
+val WordClass.storedKey: String get() = name.lowercase()
+
+fun wordClassFromKey(key: String?): WordClass? = WordClass.entries.firstOrNull { it.storedKey == key }
+
+enum class SymbolColor(val key: String) {
+    YELLOW("yellow"),
+    MINT("mint"),
+    BLUE("blue"),
+    PINK("pink"),
+    ORANGE("orange"),
+    LILAC("lilac"),
+    GREEN("green"),
+    NONE("none");
+
+    companion object {
+        /** Null for no choice and for a color this version does not know, which then follows the kind of word. */
+        fun fromKey(key: String?): SymbolColor? = entries.firstOrNull { it.key == key }
+    }
+}
 
 /** Most boards one person can have; also enforced by the rules on list queries. */
 const val MAX_AAC_BOARDS = 30

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -22,6 +23,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.height
+import androidx.compose.ui.unit.width
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.oriteam.ori.domain.aac.SpeechState
 import com.oriteam.ori.testing.OriTestWindow
@@ -79,8 +83,18 @@ class AacMessageBarTest {
 
     private val textField get() = composeRule.onNode(hasSetTextAction())
 
-    /** The "+" at the end of the message. */
+    /** The keyboard with "Escrever" under it, at the end of the message. */
     private val writeAction get() = composeRule.onNodeWithContentDescription("Escrever")
+
+    @Test
+    fun `writing is a button with a full touch target`() {
+        render()
+
+        val write = writeAction.assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)).bounds
+
+        assertTrue("width ${write.width}", write.width >= 48.dp)
+        assertTrue("height ${write.height}", write.height >= 48.dp)
+    }
 
     @Test
     fun `the four actions fit in one row on a common phone`() {

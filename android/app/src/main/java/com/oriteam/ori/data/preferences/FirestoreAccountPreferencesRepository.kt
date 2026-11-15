@@ -5,6 +5,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.oriteam.ori.data.firestore.FirestoreSchema
 import com.oriteam.ori.data.firestore.awaitWriteAcknowledgement
 import com.oriteam.ori.data.firestore.dataErrorFor
+import com.oriteam.ori.data.firestore.firestoreListenerExecutor
 import com.oriteam.ori.data.firestore.keyFor
 import com.oriteam.ori.data.firestore.runDataOperation
 import com.oriteam.ori.domain.common.DataError
@@ -71,7 +72,7 @@ class FirestoreAccountPreferencesRepository @Inject constructor(
         .document(FirestoreSchema.PREFERENCES_DOCUMENT)
 
     override fun observe(uid: String): Flow<DataResult<AccountPreferences?>> = callbackFlow {
-        val registration = documentOf(uid).addSnapshotListener { snapshot, exception ->
+        val registration = documentOf(uid).addSnapshotListener(firestoreListenerExecutor) { snapshot, exception ->
             val result = if (exception != null || snapshot == null) {
                 DataResult.Failure(exception?.let(::dataErrorFor) ?: DataError.UNKNOWN)
             } else {

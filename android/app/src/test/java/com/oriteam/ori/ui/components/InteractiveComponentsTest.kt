@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.oriteam.ori.ui.components.dialog.OriConfirmationDialog
+import com.oriteam.ori.ui.components.dialog.OriDialogHost
 import com.oriteam.ori.ui.components.settings.SettingsChoice
 import com.oriteam.ori.ui.components.settings.SettingsChoiceGroup
 import com.oriteam.ori.ui.components.settings.SettingsSwitchItem
@@ -79,15 +80,17 @@ class InteractiveComponentsTest {
         val calls = mutableListOf<String>()
         composeRule.setContent {
             OriTheme {
-                OriConfirmationDialog(
-                    title = "Encerrar vínculo?",
-                    message = "O responsável deixará de ver suas rotinas.",
-                    confirmLabel = "Encerrar",
-                    dismissLabel = "Cancelar",
-                    onConfirm = { calls += "confirm" },
-                    onDismiss = { calls += "dismiss" },
-                    isDestructive = true
-                )
+                OriDialogHost {
+                    OriConfirmationDialog(
+                        title = "Encerrar vínculo?",
+                        message = "O responsável deixará de ver suas rotinas.",
+                        confirmLabel = "Encerrar",
+                        dismissLabel = "Cancelar",
+                        onConfirm = { calls += "confirm" },
+                        onDismiss = { calls += "dismiss" },
+                        isDestructive = true
+                    )
+                }
             }
         }
 

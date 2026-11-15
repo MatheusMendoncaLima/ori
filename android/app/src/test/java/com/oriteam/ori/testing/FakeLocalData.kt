@@ -37,6 +37,10 @@ class FakeDeviceProfileRepository(hasLocalProfile: Boolean = false) : DeviceProf
     override suspend fun saveAccountProfileCopy(profile: UserProfile) {
         accountCopy.value = profile
     }
+
+    override suspend fun clearAccountProfileCopy() {
+        accountCopy.value = null
+    }
 }
 
 class FakeLocalDataStore(var data: LocalDataSnapshot = LocalDataSnapshot()) : LocalDataStore {
@@ -88,7 +92,11 @@ class FakeProfilePhotoStore : ProfilePhotoStore {
 
     override fun observePhoto(uid: String): Flow<String?> = photos.map { it[uid] }
 
+    /** When set, the next pictures fail with it and nothing changes. */
+    var setError: PhotoImportError? = null
+
     override suspend fun setPhoto(uid: String, sourceUri: String): PhotoImportError? {
+        setError?.let { return it }
         photos.value += uid to sourceUri
         return null
     }

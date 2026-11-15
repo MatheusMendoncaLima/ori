@@ -56,13 +56,27 @@ android {
     }
 
     buildTypes {
+        debug {
+            // The pseudo-languages en-XA (longer texts, in brackets) and ar-XB (right to left) can be picked in
+            // the device's languages: they show cut texts and texts written in code before a real translation.
+            isPseudoLocalesEnabled = true
+        }
         release {
-            isMinifyEnabled = false
+            // R8 shrinks and optimizes the code: Compose runs much faster than in a debug build.
+            isMinifyEnabled = true
+            isShrinkResources = true
 
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        // Release as it ships, but signed with the debug key so it installs on a test device: the one to
+        // measure smoothness with (`./gradlew assembleProdProfiling`). Debug builds are several times slower.
+        create("profiling") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
         }
     }
 
@@ -80,9 +94,24 @@ android {
         buildConfig = true
     }
 
+    bundle {
+        // Every language of the app stays in it, not only the device's, as Play would split them: the suggested
+        // board is shown in the app's language whatever language it was made in (StarterVocabulary), and the
+        // three languages together are a few kilobytes of text.
+        language {
+            enableSplit = false
+        }
+    }
+
     testOptions {
         // Robolectric needs merged resources to render Compose UI tests on the JVM.
         unitTests.isIncludeAndroidResources = true
+        // The app's language comes from the device's (appLanguageTag). Tests expect Portuguese on every machine,
+        // also on a CI runner in English; a test of another language sets it itself.
+        unitTests.all {
+            it.systemProperty("user.language", "pt")
+            it.systemProperty("user.country", "BR")
+        }
     }
 }
 
@@ -134,6 +163,10 @@ dependencies {
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
+    // Google sign-in through the Android Credential Manager (the account sheet of the system).
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.googleid)
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.functions)
     implementation(libs.androidx.datastore.preferences)

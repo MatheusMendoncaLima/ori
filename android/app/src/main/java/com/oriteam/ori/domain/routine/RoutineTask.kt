@@ -1,6 +1,5 @@
 package com.oriteam.ori.domain.routine
 
-import com.oriteam.ori.domain.model.TaskStatus
 import java.time.LocalDate
 import java.time.LocalTime
 

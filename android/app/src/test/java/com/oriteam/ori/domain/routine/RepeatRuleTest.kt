@@ -53,6 +53,22 @@ class RepeatRuleTest {
     }
 
     @Test
+    fun `monthly keeps the day of the first one, and a short month uses its last day`() {
+        val rule = RepeatRule.MonthlyOnStartDay
+        val fifteenth = LocalDate.of(2026, 11, 15)
+        val thirtyFirst = LocalDate.of(2026, 1, 31)
+
+        assertTrue(rule.occursOn(LocalDate.of(2026, 12, 15), fifteenth))
+        assertFalse(rule.occursOn(LocalDate.of(2026, 12, 16), fifteenth))
+        assertTrue(rule.occursOn(LocalDate.of(2026, 2, 28), thirtyFirst))
+        assertTrue(rule.occursOn(LocalDate.of(2028, 2, 29), thirtyFirst))
+        assertFalse(rule.occursOn(LocalDate.of(2028, 2, 28), thirtyFirst))
+        assertTrue(rule.occursOn(LocalDate.of(2026, 4, 30), thirtyFirst))
+        assertTrue(rule.occursOn(LocalDate.of(2026, 5, 31), thirtyFirst))
+        assertFalse(rule.occursOn(LocalDate.of(2026, 5, 30), thirtyFirst))
+    }
+
+    @Test
     fun `tapping circles adds days and clearing the last one stops repeating`() {
         val first = null.togglingDay(DayOfWeek.MONDAY)
         val second = first.togglingDay(DayOfWeek.FRIDAY)
@@ -73,7 +89,8 @@ class RepeatRuleTest {
             RepeatRule.EveryDay,
             RepeatRule.Weekly(setOf(DayOfWeek.SUNDAY, DayOfWeek.MONDAY), intervalWeeks = 3),
             RepeatRule.LastDayOfMonth,
-            RepeatRule.LastBusinessDayOfMonth
+            RepeatRule.LastBusinessDayOfMonth,
+            RepeatRule.MonthlyOnStartDay
         ).forEach { assertEquals(it, repeatRuleFromStoredText(it.toStoredText())) }
 
         assertEquals("weekly:1,7:3", RepeatRule.Weekly(setOf(DayOfWeek.SUNDAY, DayOfWeek.MONDAY), 3).toStoredText())

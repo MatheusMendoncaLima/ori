@@ -32,7 +32,7 @@ class WindowLayoutTest {
         assertEquals(NavigationLayout.RAIL, phoneLandscape.navigationLayout)
         assertEquals(NavigationLayout.RAIL, foldableUnfolded.navigationLayout)
         assertEquals(NavigationLayout.RAIL, tabletPortrait.navigationLayout)
-        assertEquals(NavigationLayout.DRAWER, tabletLandscape.navigationLayout)
+        assertEquals(NavigationLayout.RAIL, tabletLandscape.navigationLayout)
     }
 
     @Test

@@ -28,25 +28,27 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import com.oriteam.ori.R
-import com.oriteam.ori.domain.common.AppLocale
 import com.oriteam.ori.domain.routine.startOfWeek
+import com.oriteam.ori.ui.components.text.DateSkeletons
+import com.oriteam.ori.ui.components.text.LocalAppLocale
 import com.oriteam.ori.ui.components.text.Text
+import com.oriteam.ori.ui.components.text.rememberDateFormat
 import com.oriteam.ori.ui.theme.LocalOriAppearance
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
-import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
+import java.util.Locale
 
 private const val DAYS_IN_WEEK = 7
 
 private const val WEEK_PAGES = 5_200
-private val FirstWeek: LocalDate = startOfWeek(LocalDate.of(2000, 1, 5))
 
-private val monthFormat = DateTimeFormatter.ofPattern("MMMM yyyy", AppLocale)
+/** The first page of the strip; read at each use, because the first day of the week follows the language. */
+private val FirstWeek: LocalDate get() = startOfWeek(LocalDate.of(2000, 1, 5))
 
-/** The days of the week of [date], from [com.oriteam.ori.domain.routine.FIRST_DAY_OF_WEEK]. */
+/** The days of the week of [date], from [com.oriteam.ori.domain.routine.firstDayOfWeek]. */
 internal fun weekOf(date: LocalDate): List<LocalDate> {
     val first = startOfWeek(date)
     return List(DAYS_IN_WEEK) { first.plusDays(it.toLong()) }
@@ -84,7 +86,7 @@ fun WeekStrip(date: LocalDate, today: LocalDate, onSelectDate: (LocalDate) -> Un
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            text = day.dayOfWeek.shortName(),
+                            text = day.dayOfWeek.shortName(LocalAppLocale.current),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
@@ -105,7 +107,7 @@ fun WeekStrip(date: LocalDate, today: LocalDate, onSelectDate: (LocalDate) -> Un
     }
 }
 
-internal fun DayOfWeek.shortName() = getDisplayName(TextStyle.SHORT, AppLocale)
+internal fun DayOfWeek.shortName(locale: Locale) = getDisplayName(TextStyle.SHORT, locale)
     .removeSuffix(".")
     .replaceFirstChar { it.uppercase() }
 
@@ -122,7 +124,7 @@ internal fun CalendarHeader(
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
-            text = date.format(monthFormat).replaceFirstChar { it.uppercase() },
+            text = date.format(rememberDateFormat(DateSkeletons.MONTH_YEAR)).replaceFirstChar { it.uppercase() },
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier
                 .weight(1f)

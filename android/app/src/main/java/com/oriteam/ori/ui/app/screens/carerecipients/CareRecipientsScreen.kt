@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -23,8 +24,10 @@ import com.oriteam.ori.ui.adaptive.OriListDetailLayout
 import com.oriteam.ori.ui.app.screens.carelinks.CareLinksViewModel
 import com.oriteam.ori.ui.app.screens.carelinks.InvitationSection
 import com.oriteam.ori.ui.app.screens.carelinks.InvitationViewModel
+import com.oriteam.ori.ui.components.icon.OriIcons
 import com.oriteam.ori.ui.components.list.OriListItem
 import com.oriteam.ori.ui.components.list.OriOpenArrow
+import com.oriteam.ori.ui.components.motion.itemAnimation
 import com.oriteam.ori.ui.components.navigation.OriTopBar
 import com.oriteam.ori.ui.components.state.ContentState
 import com.oriteam.ori.ui.components.state.EmptyState
@@ -66,6 +69,7 @@ fun CareRecipientsRoute(
                     onRetry = viewModel::onRetry,
                     emptyContent = {
                         EmptyState(
+                            icon = OriIcons.People,
                             title = stringResource(R.string.care_recipients_empty_title),
                             message = stringResource(R.string.care_recipients_empty_message)
                         )
@@ -80,6 +84,7 @@ fun CareRecipientsRoute(
                         ) {
                             items(activeLinks, key = { it.id }) { link ->
                                 OriListItem(
+                                    modifier = Modifier.itemAnimation(this, LocalOriAppearance.current.motion),
                                     headline = link.primaryUserName,
                                     supportingText = stringResource(
                                         if (link.permissions.manageRoutines) {
@@ -103,6 +108,7 @@ fun CareRecipientsRoute(
             if (link == null) {
                 // The link was revoked while open: its data is no longer reachable.
                 EmptyState(
+                    icon = Icons.Filled.Lock,
                     title = stringResource(R.string.care_recipients_link_ended_title),
                     message = stringResource(R.string.care_recipients_link_ended_message)
                 )
@@ -112,6 +118,7 @@ fun CareRecipientsRoute(
         },
         emptyDetailPane = {
             EmptyState(
+                icon = OriIcons.People,
                 title = stringResource(R.string.care_recipients_choose_title),
                 message = stringResource(R.string.care_recipients_choose_message)
             )

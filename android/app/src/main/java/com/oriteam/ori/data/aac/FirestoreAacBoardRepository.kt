@@ -65,17 +65,18 @@ class FirestoreAacBoardRepository @Inject constructor(
 
     override fun newSymbolId(ownerUid: String, boardId: String): String = symbolsOf(ownerUid, boardId).document().id
 
-    override suspend fun createBoard(ownerUid: String, name: String, position: Int) =
-        createBoardWithSymbols(ownerUid, name, position, symbols = emptyList())
+    override suspend fun createBoard(ownerUid: String, name: String, position: Int, language: String) =
+        createBoardWithSymbols(ownerUid, name, position, symbols = emptyList(), language = language)
 
     override suspend fun createBoardWithSymbols(
         ownerUid: String,
         name: String,
         position: Int,
-        symbols: List<SymbolDraft>
+        symbols: List<SymbolDraft>,
+        language: String
     ): DataResult<WriteStatus> = writeAsAuthor { author ->
         val board = boardsOf(ownerUid).document()
-        set(board, newBoardDocument(name, position, author))
+        set(board, newBoardDocument(name, position, author, language))
         symbols.forEachIndexed { index, draft ->
             set(symbolsOf(ownerUid, board.id).document(), draft.toNewDocument(author, position = index))
         }

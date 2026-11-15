@@ -79,7 +79,11 @@ fun PersonalDataRoute(
         }
     }
     Column(modifier = Modifier.fillMaxSize()) {
-        OriTopBar(title = stringResource(R.string.profile_personal), onNavigateBack = onNavigateBack)
+        OriTopBar(
+            maxWidth = OriDimensions.FormMaxWidth,
+            title = stringResource(R.string.profile_personal),
+            onNavigateBack = onNavigateBack
+        )
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             CenteredContent(maxWidth = OriDimensions.FormMaxWidth) {
                 ProfilePhotoChoice(actions)
@@ -191,7 +195,11 @@ fun CaregiversRoute(
 fun ConnectAccountRoute(onNavigateBack: () -> Unit) {
     var isRegistering by rememberSaveable { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxSize()) {
-        OriTopBar(title = stringResource(R.string.connect_title), onNavigateBack = onNavigateBack)
+        OriTopBar(
+            maxWidth = OriDimensions.FormMaxWidth,
+            title = stringResource(R.string.connect_title),
+            onNavigateBack = onNavigateBack
+        )
         CenteredContent(maxWidth = OriDimensions.FormMaxWidth) {
             Text(
                 text = stringResource(R.string.connect_notice),

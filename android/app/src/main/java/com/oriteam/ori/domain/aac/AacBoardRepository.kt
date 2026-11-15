@@ -29,14 +29,16 @@ interface AacBoardRepository {
      */
     fun newSymbolId(ownerUid: String, boardId: String): String
 
-    suspend fun createBoard(ownerUid: String, name: String, position: Int): DataResult<WriteStatus>
+    /** [language] is the one the board is written in, as a language tag (see [AacBoard.language]). */
+    suspend fun createBoard(ownerUid: String, name: String, position: Int, language: String): DataResult<WriteStatus>
 
     /** Creates a board already filled with [symbols], in one atomic write. */
     suspend fun createBoardWithSymbols(
         ownerUid: String,
         name: String,
         position: Int,
-        symbols: List<SymbolDraft>
+        symbols: List<SymbolDraft>,
+        language: String
     ): DataResult<WriteStatus>
 
     suspend fun renameBoard(ownerUid: String, boardId: String, name: String): DataResult<WriteStatus>

@@ -19,11 +19,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.oriteam.ori.R
 import com.oriteam.ori.domain.preferences.StartArea
 import com.oriteam.ori.domain.session.SessionState
+import com.oriteam.ori.ui.app.main.AreaRequest
 import com.oriteam.ori.ui.app.main.MainScaffold
 import com.oriteam.ori.ui.app.screens.account.ProfileActions
 import com.oriteam.ori.ui.app.screens.account.ProfilePhotoViewModel
 import com.oriteam.ori.ui.app.screens.common.messageRes
 import com.oriteam.ori.ui.app.screens.home.HomeRoute
+import com.oriteam.ori.ui.app.screens.legal.ConsentGate
 import com.oriteam.ori.ui.app.screens.profile.ProfileSetupRoute
 import com.oriteam.ori.ui.app.session.SessionViewModel
 import com.oriteam.ori.ui.components.form.OriTextButton
@@ -35,7 +37,11 @@ import com.oriteam.ori.ui.components.state.LoadingState
  * signing in, creating the profile or signing out changes [SessionState] and this switches.
  */
 @Composable
-fun OriApp(startArea: StartArea, sessionViewModel: SessionViewModel = hiltViewModel()) {
+fun OriApp(
+    startArea: StartArea,
+    areaRequest: AreaRequest? = null,
+    sessionViewModel: SessionViewModel = hiltViewModel()
+) {
     val session by sessionViewModel.state.collectAsStateWithLifecycle()
     val localDataMove by sessionViewModel.localDataMove.collectAsStateWithLifecycle()
 
@@ -43,16 +49,19 @@ fun OriApp(startArea: StartArea, sessionViewModel: SessionViewModel = hiltViewMo
         when (val state = session) {
             SessionState.Initializing -> LoadingState(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing))
             SessionState.SignedOut -> HomeRoute(onContinueWithoutAccount = sessionViewModel::onContinueWithoutAccount)
-            is SessionState.ProfileRequired -> ProfileSetupRoute(
-                user = state.user,
-                onSignOut = sessionViewModel::signOut
-            )
+            // Consent first (J2, J3): nothing of the account is written before it.
+            is SessionState.ProfileRequired -> ConsentGate(state.user.uid, onDecline = sessionViewModel::signOut) {
+                ProfileSetupRoute(user = state.user, onSignOut = sessionViewModel::signOut)
+            }
             is SessionState.ProfileUnavailable -> ProfileUnavailableScreen(
                 messageRes = state.error.messageRes(),
                 onRetry = sessionViewModel::retry,
                 onSignOut = sessionViewModel::signOut
             )
-            is SessionState.Active -> {
+            is SessionState.Active -> ConsentGate(
+                ownerUid = state.profile.uid,
+                onDecline = { sessionViewModel.declineConsent(state.profile) }
+            ) {
                 val profile = state.profile
                 LaunchedEffect(profile) { if (!profile.isLocal) sessionViewModel.onAccountActive(profile) }
                 val photoViewModel: ProfilePhotoViewModel = hiltViewModel()
@@ -62,6 +71,7 @@ fun OriApp(startArea: StartArea, sessionViewModel: SessionViewModel = hiltViewMo
                 MainScaffold(
                     profile = profile,
                     startArea = startArea,
+                    areaRequest = areaRequest,
                     profileActions = ProfileActions(
                         localDataMove = localDataMove,
                         onRetryLocalDataMove = { sessionViewModel.onRetryLocalDataMove(profile) },

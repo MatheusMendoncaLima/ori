@@ -24,6 +24,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.oriteam.ori.R
 import com.oriteam.ori.ui.app.screens.auth.AuthFormScaffold
+import com.oriteam.ori.ui.app.screens.auth.GoogleSignInSection
 import com.oriteam.ori.ui.components.form.BrandHeader
 import com.oriteam.ori.ui.components.form.FormMessage
 import com.oriteam.ori.ui.components.form.FormMessageType
@@ -143,6 +144,7 @@ fun RegisterScreen(
             isLoading = state.isLoading,
             onClick = onRegisterClick
         )
+        GoogleSignInSection()
         Spacer(modifier = Modifier.height(OriSpacing.Medium))
 
         OriTextButton(text = stringResource(R.string.register_has_account), onClick = onNavigateToLoginClick)

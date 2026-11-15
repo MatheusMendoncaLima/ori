@@ -24,6 +24,12 @@ enum class MainDestination(@StringRes val labelRes: Int, val icon: ImageVector) 
 /** Screens opened from Início. They keep the bottom bar, so the way back is always visible. */
 enum class HomeSubscreen { TASKS, REPORTS }
 
+/**
+ * ORI Home asked for [area] while the app was already open (its panel opens the routine or the phrases): the app
+ * comes back as it was and only changes the area. Every request is a new object, so the same area twice still counts.
+ */
+class AreaRequest(val area: StartArea)
+
 /** The area that opens first. */
 fun startDestinationFor(startArea: StartArea): MainDestination = when (startArea) {
     StartArea.HOME -> MainDestination.HOME

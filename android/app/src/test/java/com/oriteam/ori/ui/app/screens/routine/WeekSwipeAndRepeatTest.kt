@@ -15,8 +15,8 @@ import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.oriteam.ori.domain.routine.FIRST_DAY_OF_WEEK
 import com.oriteam.ori.domain.routine.RepeatRule
+import com.oriteam.ori.domain.routine.firstDayOfWeek
 import com.oriteam.ori.ui.components.state.ContentState
 import com.oriteam.ori.ui.theme.OriTheme
 import org.junit.Assert.assertEquals
@@ -47,7 +47,7 @@ class WeekSwipeAndRepeatTest {
     fun `dragging changes the week and keeps the day of the week`() {
         val date = renderWeek()
 
-        composeRule.onNodeWithText("Novembro 2026").assertExists()
+        composeRule.onNodeWithText("Novembro de 2026").assertExists()
         composeRule.onNodeWithContentDescription("quarta-feira, dia 4, hoje", substring = true)
             .performTouchInput { swipeLeft() }
         composeRule.waitForIdle()
@@ -103,13 +103,13 @@ class WeekSwipeAndRepeatTest {
         lastDayOfTheMonth.assertDoesNotExist()
 
         // Over the calendar.
-        composeRule.onNodeWithText("Novembro 2026").performTouchInput {
+        composeRule.onNodeWithText("Novembro de 2026").performTouchInput {
             swipeDown(startY = centerY, endY = centerY + 200f)
         }
         composeRule.waitForIdle()
         lastDayOfTheMonth.assertExists()
 
-        composeRule.onNodeWithText("Novembro 2026").performTouchInput {
+        composeRule.onNodeWithText("Novembro de 2026").performTouchInput {
             swipeUp(startY = centerY + 200f, endY = centerY)
         }
         composeRule.waitForIdle()
@@ -133,23 +133,33 @@ class WeekSwipeAndRepeatTest {
     fun `the bar does the same with a tap, for who cannot drag`() {
         renderDayList()
 
-        composeRule.onNodeWithContentDescription("Ver o mês inteiro").performClick()
+        composeRule.onNodeWithText("Ver o mês inteiro").performClick()
         lastDayOfTheMonth.assertExists()
 
-        composeRule.onNodeWithContentDescription("Voltar para a semana").performClick()
+        composeRule.onNodeWithText("Voltar para a semana").performClick()
         lastDayOfTheMonth.assertDoesNotExist()
+    }
+
+    @Test
+    fun `a week all in the next month is left empty, but the days of the next month in the last week stay`() {
+        renderDayList()
+        composeRule.onNodeWithText("Ver o mês inteiro").performClick()
+
+        // November 2026 ends on a Monday: 1 to 5 December complete its last week; 6 to 12 are a week of December.
+        composeRule.onNodeWithContentDescription("sábado, 5 de dezembro", substring = true).assertExists()
+        composeRule.onNodeWithContentDescription("domingo, 6 de dezembro", substring = true).assertDoesNotExist()
     }
 
     @Test
     fun `in the month, choosing a day and changing the month keep working`() {
         val date = renderDayList()
-        composeRule.onNodeWithContentDescription("Ver o mês inteiro").performClick()
+        composeRule.onNodeWithText("Ver o mês inteiro").performClick()
 
         lastDayOfTheMonth.performClick()
         assertEquals(LocalDate.of(2026, 11, 30), date())
         composeRule.onNodeWithContentDescription("Próximo mês").performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("Dezembro 2026").assertExists()
+        composeRule.onNodeWithText("Dezembro de 2026").assertExists()
     }
 
     @Test
@@ -157,14 +167,14 @@ class WeekSwipeAndRepeatTest {
         val days = daysShownIn(java.time.YearMonth.of(2026, 12))
 
         assertEquals(42, days.size)
-        assertEquals(FIRST_DAY_OF_WEEK, days.first().dayOfWeek)
+        assertEquals(firstDayOfWeek, days.first().dayOfWeek)
         assertTrue(days.first() <= LocalDate.of(2026, 12, 1))
         assertTrue(LocalDate.of(2026, 12, 31) in days)
     }
 
     @Test
     fun `weeks start on Sunday, as Brazilian calendars do`() {
-        assertEquals(DayOfWeek.SUNDAY, FIRST_DAY_OF_WEEK)
+        assertEquals(DayOfWeek.SUNDAY, firstDayOfWeek)
         assertEquals(LocalDate.of(2026, 11, 1), weekOf(wednesday).first())
         val days = daysShownIn(java.time.YearMonth.of(2026, 11))
         assertEquals(true, LocalDate.of(2026, 11, 30) in days)
@@ -220,9 +230,9 @@ class WeekSwipeAndRepeatTest {
         composeRule.onNodeWithContentDescription("segunda-feira").performClick()
         composeRule.onNodeWithContentDescription("quarta-feira").performClick()
         assertEquals(RepeatRule.Weekly(setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY)), rule)
-        composeRule.onNodeWithText("Toda semana: seg, qua, a partir de 4/11").assertExists()
+        composeRule.onNodeWithText("Toda semana: seg, qua, a partir de 04/11").assertExists()
         composeRule.onNodeWithContentDescription("domingo").performClick()
-        composeRule.onNodeWithText("Toda semana: dom, seg, qua, a partir de 4/11").assertExists()
+        composeRule.onNodeWithText("Toda semana: dom, seg, qua, a partir de 04/11").assertExists()
         composeRule.onNodeWithContentDescription("domingo").performClick()
 
         composeRule.onNodeWithText("2 semanas").performClick()
@@ -233,6 +243,6 @@ class WeekSwipeAndRepeatTest {
 
         composeRule.onNodeWithText("Não repete").performClick()
         assertNull(rule)
-        composeRule.onNodeWithText("Só no dia 4/11").assertExists()
+        composeRule.onNodeWithText("Só no dia 04/11").assertExists()
     }
 }

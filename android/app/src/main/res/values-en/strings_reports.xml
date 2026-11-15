@@ -1,0 +1,29 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Relatórios, em inglês. -->
+    <string name="reports_title">Reports</string>
+    <string name="reports_this_week">This week</string>
+    <string name="reports_this_month">This month</string>
+    <string name="reports_summary">Overview</string>
+    <!-- The number is shown beside it, in large type. -->
+    <plurals name="reports_tasks_done" tools:ignore="ImpliedQuantity">
+        <item quantity="one">Activity completed</item>
+        <item quantity="other">Activities completed</item>
+    </plurals>
+    <string name="reports_completion">Of what was planned</string>
+    <!-- The number is shown beside it, in large type. -->
+    <plurals name="reports_aac_usage" tools:ignore="ImpliedQuantity">
+        <item quantity="one">Time communicated</item>
+        <item quantity="other">Times communicated</item>
+    </plurals>
+    <string name="reports_aac_usage_note">Communication is counted on this device only: speaking, showing the sentence or tapping a ready phrase.</string>
+    <string name="reports_daily">Daily progress</string>
+    <string name="reports_chart_description">Chart of the percentage of activities completed each day. The detailed list shows the same values.</string>
+    <string name="reports_details_show">See detailed reports</string>
+    <string name="reports_details_hide">Hide details</string>
+    <plurals name="reports_day_line">
+        <item quantity="one">%1$d of %2$d completed</item>
+        <item quantity="other">%1$d of %2$d completed</item>
+    </plurals>
+    <string name="reports_no_data_title">No data yet</string>
+    <string name="reports_no_data_message">When there are activities in this period, the overview shows up here.</string>
+</resources>

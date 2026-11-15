@@ -1,6 +1,7 @@
 package com.oriteam.ori.ui.app.screens.aac
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -57,7 +59,7 @@ fun AacBoardLayout(
                 verticalArrangement = Arrangement.spacedBy(OriSpacing.Small)
             ) {
                 messageBar(Modifier.fillMaxWidth())
-                actions()
+                CenteredActions(actions)
             }
             content(Modifier.weight(2f))
         }
@@ -74,7 +76,7 @@ fun AacBoardLayout(
                 Spacer(modifier = Modifier.height(OriSpacing.Small))
                 content(Modifier.weight(1f))
                 Spacer(modifier = Modifier.height(OriSpacing.Small))
-                actions()
+                CenteredActions(actions)
                 Spacer(modifier = Modifier.height(OriSpacing.Small))
             }
         }
@@ -110,4 +112,10 @@ private fun AacBoardLandscapePreview() {
             modifier = Modifier.size(800.dp, 360.dp)
         )
     }
+}
+
+/** The actions keep a comfortable width and stay in the middle, instead of hugging the left of a wide screen. */
+@Composable
+private fun CenteredActions(actions: @Composable () -> Unit) {
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { actions() }
 }

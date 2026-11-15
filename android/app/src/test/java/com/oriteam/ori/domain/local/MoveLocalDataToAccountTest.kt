@@ -8,23 +8,25 @@ import com.oriteam.ori.domain.common.DataError
 import com.oriteam.ori.domain.common.DataResult
 import com.oriteam.ori.domain.common.ListSnapshot
 import com.oriteam.ori.domain.common.WriteStatus
-import com.oriteam.ori.domain.model.TaskStatus
 import com.oriteam.ori.domain.profile.LOCAL_OWNER_UID
 import com.oriteam.ori.domain.routine.RepeatRule
 import com.oriteam.ori.domain.routine.RoutineSeries
 import com.oriteam.ori.domain.routine.RoutineTask
+import com.oriteam.ori.domain.routine.TaskStatus
 import com.oriteam.ori.domain.routine.occurrenceIdOf
 import com.oriteam.ori.testing.FakeAacBoardRepository
 import com.oriteam.ori.testing.FakeLocalDataStore
 import com.oriteam.ori.testing.FakePhotoStore
 import com.oriteam.ori.testing.FakeRoutineRepository
 import com.oriteam.ori.testing.FakeSavedMessageRepository
+import com.oriteam.ori.testing.withDefaultLocale
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
+import java.util.Locale
 
 class MoveLocalDataToAccountTest {
     private val day = LocalDate.of(2026, 11, 2)
@@ -250,5 +252,27 @@ class MoveLocalDataToAccountTest {
 
         assertEquals(listOf("Tchau"), messages.saved)
         assertTrue(store.data.savedMessages.isEmpty())
+    }
+
+    @Test
+    fun `what moves to the account keeps its language and place, and what had no language is Portuguese`() = runTest {
+        messages.messages.value = DataResult.Success(emptyList())
+        val store = FakeLocalDataStore(
+            LocalDataSnapshot(
+                boards = listOf(
+                    LocalBoard(AacBoard("b", "Comida", 0, LOCAL_OWNER_UID, language = "es"), emptyList()),
+                    LocalBoard(AacBoard("c", "Básico", 1, LOCAL_OWNER_UID), emptyList())
+                ),
+                savedMessages = listOf(SavedMessage("1", "Hola", "es", position = 1), SavedMessage("2", "Oi"))
+            )
+        )
+
+        // Even moved with the app in English: what has no language was made when the app was only in Portuguese.
+        assertEquals(LocalDataMoveResult.COMPLETED, withDefaultLocale(Locale.US) { move(store)("account") })
+
+        assertEquals(listOf("es", "pt-BR"), boards.boardLanguages)
+        assertEquals(listOf("es", "pt-BR"), messages.savedLanguages)
+        // A phrase moved on the device keeps its place in the account.
+        assertEquals(listOf(1, null), messages.savedPositions)
     }
 }

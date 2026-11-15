@@ -26,6 +26,7 @@ class AacPhrasesPaneTest {
     val composeRule = createAndroidComposeRule<ComponentActivity>()
 
     private val said = mutableListOf<String>()
+    private val languages = mutableListOf<String?>()
 
     private fun render(saved: ContentState<List<SavedMessage>>, speechState: SpeechState = SpeechState.READY) {
         composeRule.setContent {
@@ -33,7 +34,10 @@ class AacPhrasesPaneTest {
                 AacPhrasesPane(
                     saved = saved,
                     speechState = speechState,
-                    onSay = { said += it },
+                    onSay = { text, language ->
+                        said += text
+                        languages += language
+                    },
                     onStop = {},
                     onDeleteSaved = {},
                     onRetry = {}
@@ -59,6 +63,17 @@ class AacPhrasesPaneTest {
         composeRule.onNodeWithText(composeRule.activity.getString(error)).assertExists()
         composeRule.onNodeWithText("Estou com dor").performClick()
         assertEquals(listOf("Estou com dor"), said)
+    }
+
+    @Test
+    fun `a saved phrase is said in its language, an old one in Portuguese, a ready one in the app's`() {
+        render(ContentState.Content(listOf(SavedMessage("m1", "Hola", "es"), SavedMessage("m2", "Oi"))))
+
+        composeRule.onNodeWithText("Hola").performClick()
+        composeRule.onNodeWithText("Oi").performClick()
+        composeRule.onNodeWithText("Sim").performClick()
+
+        assertEquals(listOf("es", "pt-BR", null), languages)
     }
 
     @Test

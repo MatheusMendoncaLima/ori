@@ -3,6 +3,7 @@ package com.oriteam.ori.ui.app.screens.aac
 import androidx.lifecycle.SavedStateHandle
 import com.oriteam.ori.R
 import com.oriteam.ori.domain.aac.AacViewer
+import com.oriteam.ori.domain.aac.SymbolDraft
 import com.oriteam.ori.domain.aac.SymbolImage
 import com.oriteam.ori.domain.common.DataError
 import com.oriteam.ori.domain.common.DataResult
@@ -15,12 +16,16 @@ import com.oriteam.ori.testing.board
 import com.oriteam.ori.testing.communicationManager
 import com.oriteam.ori.testing.listSnapshotOf
 import com.oriteam.ori.testing.routineOnlyCaregiver
+import com.oriteam.ori.testing.starterVocabulary
 import com.oriteam.ori.testing.symbol
+import com.oriteam.ori.testing.withDefaultLocale
 import com.oriteam.ori.ui.components.state.ContentState
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -28,6 +33,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import java.util.Locale
 
 class AacOrganizeViewModelTest {
 
@@ -48,7 +54,7 @@ class AacOrganizeViewModelTest {
     private fun TestScope.organizer(
         viewer: AacViewer = AacViewer.Owner,
         savedState: SavedStateHandle = SavedStateHandle()
-    ) = AacOrganizeViewModel(boards, photos, savedState).also {
+    ) = AacOrganizeViewModel(boards, photos, savedState, starterVocabulary).also {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { it.uiState.collect() }
         it.show(OWNER, viewer)
     }
@@ -86,6 +92,72 @@ class AacOrganizeViewModelTest {
     }
 
     @Test
+    fun `the suggested board is organized in the app's language, and edited as it is seen`() = runTest {
+        boards.boards.value = listSnapshotOf(
+            board("b", "Básico", language = "pt-BR"),
+            board("c", "Comida", position = 1)
+        )
+        boards.symbols.value = listSnapshotOf(
+            symbol("s1", "eu", image = SymbolImage.Emoji("🙋"), boardId = "b"),
+            symbol("s2", "Bolo", image = SymbolImage.Emoji("🍰"), boardId = "b", position = 1)
+        )
+        val viewModel = withDefaultLocale(Locale.forLanguageTag("es-ES")) { organizer() }
+        viewModel.onOpenBoard("b")
+
+        assertEquals(listOf("Básico", "Comida"), viewModel.boardRows().map { it.item.name })
+        assertEquals("yo", viewModel.symbol("s1")?.label)
+        assertEquals("Bolo", viewModel.symbol("s2")?.label)
+        val englishViewModel = withDefaultLocale(Locale.US) { organizer() }
+        assertEquals(listOf("Basics", "Comida"), englishViewModel.boardRows().map { it.item.name })
+    }
+
+    @Test
+    fun `an older suggested board is completed with the words it lacks, at its end, once`() = runTest {
+        boards.boards.value = listSnapshotOf(board("b", "Básico", language = "pt-BR"))
+        boards.symbols.value = listSnapshotOf(
+            symbol("s1", "eu", image = SymbolImage.Emoji("🙋"), boardId = "b", position = 0),
+            symbol("s2", "Bolo", image = SymbolImage.Emoji("🍰"), boardId = "b", position = 1)
+        )
+        val viewModel = organizer()
+        viewModel.onOpenBoard("b")
+        assertEquals(3, viewModel.uiState.value.suggestedWordsToAdd)
+
+        boards.writeGate = CompletableDeferred()
+        viewModel.onAddSuggestedWords()
+        // A second tap while the first is saving adds nothing more.
+        viewModel.onAddSuggestedWords()
+        assertTrue(viewModel.uiState.value.isAddingSuggestedWords)
+        boards.writeGate?.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(
+                SymbolDraft("estou", null, SymbolImage.Emoji("🌙")) to 2,
+                SymbolDraft("dor", null, SymbolImage.Emoji("🤕")) to 3,
+                SymbolDraft("fome", null, SymbolImage.Emoji("🍽️")) to 4
+            ),
+            boards.writes.filter { it.operation == "createSymbol" }.map { it.detail }
+        )
+        assertFalse(viewModel.uiState.value.isAddingSuggestedWords)
+    }
+
+    @Test
+    fun `a board without words of the app is offered none, and a caregiver without permission adds none`() = runTest {
+        boards.boards.value = listSnapshotOf(board("c", "Comida", language = "pt-BR"))
+        boards.symbols.value = listSnapshotOf(symbol("s1", "Bolo", image = SymbolImage.Emoji("🍰"), boardId = "c"))
+        val viewModel = organizer()
+        viewModel.onOpenBoard("c")
+        assertEquals(0, viewModel.uiState.value.suggestedWordsToAdd)
+
+        boards.symbols.value = listSnapshotOf(symbol("s1", "eu", image = SymbolImage.Emoji("🙋"), boardId = "c"))
+        val caregiver = organizer(viewer = routineOnlyCaregiver)
+        caregiver.onOpenBoard("c")
+        caregiver.onAddSuggestedWords()
+        advanceUntilIdle()
+        assertTrue(boards.writes.isEmpty())
+    }
+
+    @Test
     fun `a new board name is validated before any write`() = runTest {
         val viewModel = organizer()
 
@@ -99,6 +171,8 @@ class AacOrganizeViewModelTest {
         viewModel.onBoardNameChange("Sentimentos")
         viewModel.onBoardDialogConfirm()
         assertEquals(listOf(AacWrite("createBoard", "Sentimentos", 3)), boards.writes)
+        // A new board is in the app's language: its voice and grammar follow it.
+        assertEquals(listOf("pt-BR"), boards.boardLanguages)
         assertNull(viewModel.uiState.value.boardDialog)
     }
 

@@ -121,10 +121,27 @@ class SessionViewModel @Inject constructor(
         retryRequests.update { it + 1 }
     }
 
-    /** Leaves the account. The data of the account stays in the account. */
+    /**
+     * Leaves the account. The data of the account stays in the account, and the copy of its profile kept for
+     * opening offline is forgotten. The Firestore cache stays: the next account only queries its own data,
+     * and clearing the cache would mean stopping Firestore for the rest of the session (see perfil-e-conta.md).
+     */
     fun signOut() {
         _localDataMove.value = null
         authRepository.signOut()
+        viewModelScope.launch { deviceProfiles.clearAccountProfileCopy() }
+    }
+
+    /**
+     * The person did not agree: an account signs out; without an account the app goes back to the welcome. Nothing
+     * is erased: what was on the device stays there, and agreeing later opens it again.
+     */
+    fun declineConsent(profile: UserProfile) {
+        if (profile.isLocal) {
+            viewModelScope.launch { deviceProfiles.clearLocalProfile() }
+        } else {
+            signOut()
+        }
     }
 
     /** Erases everything the person created without an account and goes back to the welcome. */

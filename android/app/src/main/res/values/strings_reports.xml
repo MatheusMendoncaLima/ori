@@ -1,0 +1,33 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Relatórios. -->
+    <string name="reports_title">Relatórios</string>
+    <string name="reports_this_week">Esta semana</string>
+    <string name="reports_this_month">Este mês</string>
+    <string name="reports_summary">Resumo geral</string>
+    <!-- The number is shown beside it, in large type. -->
+    <plurals name="reports_tasks_done" tools:ignore="ImpliedQuantity">
+        <item quantity="one">Atividade concluída</item>
+        <item quantity="many">Atividades concluídas</item>
+        <item quantity="other">Atividades concluídas</item>
+    </plurals>
+    <string name="reports_completion">Do planejado</string>
+    <!-- The number is shown beside it, in large type. -->
+    <plurals name="reports_aac_usage" tools:ignore="ImpliedQuantity">
+        <item quantity="one">Vez que se comunicou</item>
+        <item quantity="many">Vezes que se comunicou</item>
+        <item quantity="other">Vezes que se comunicou</item>
+    </plurals>
+    <string name="reports_aac_usage_note">A comunicação é contada só neste aparelho: falar, mostrar a frase ou tocar numa frase pronta.</string>
+    <string name="reports_percent" translatable="false">%1$d%%</string>
+    <string name="reports_daily">Desempenho diário</string>
+    <string name="reports_chart_description">Gráfico do percentual de atividades concluídas por dia. A lista detalhada mostra os mesmos valores.</string>
+    <string name="reports_details_show">Ver relatórios detalhados</string>
+    <string name="reports_details_hide">Esconder detalhes</string>
+    <plurals name="reports_day_line">
+        <item quantity="one">%1$d de %2$d concluída</item>
+        <item quantity="many">%1$d de %2$d concluídas</item>
+        <item quantity="other">%1$d de %2$d concluídas</item>
+    </plurals>
+    <string name="reports_no_data_title">Ainda não há dados</string>
+    <string name="reports_no_data_message">Quando houver atividades neste período, o resumo aparece aqui.</string>
+</resources>

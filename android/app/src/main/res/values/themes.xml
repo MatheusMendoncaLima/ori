@@ -2,4 +2,17 @@
 <resources>
 
     <style name="Theme.Ori" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- A question over what was open (an app asks to put something on the home screen): only the card shows. -->
+    <style name="Theme.Ori.Translucent" parent="Theme.Ori">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+
+    <!-- ORI Home: the window shows the Android wallpaper behind it, as every home screen does. -->
+    <style name="Theme.Ori.Launcher" parent="Theme.Ori">
+        <item name="android:windowShowWallpaper">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
 </resources>

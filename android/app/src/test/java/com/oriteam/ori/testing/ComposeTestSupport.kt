@@ -6,12 +6,15 @@ import androidx.compose.ui.test.FontScale
 import androidx.compose.ui.test.ForcedSize
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.isRoot
+import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.then
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.DpSize
 import com.oriteam.ori.ui.adaptive.WindowLayout
 import com.oriteam.ori.ui.adaptive.windowLayoutFor
+import com.oriteam.ori.ui.components.dialog.OriDialogHost
 import com.oriteam.ori.ui.theme.OriTheme
 
 /**
@@ -29,9 +32,20 @@ fun OriTestWindow(
     DeviceConfigurationOverride(
         DeviceConfigurationOverride.ForcedSize(size) then DeviceConfigurationOverride.FontScale(fontScale)
     ) {
-        OriTheme(windowLayout = windowLayoutFor(widthDp, heightDp), content = content)
+        OriTheme(windowLayout = windowLayoutFor(widthDp, heightDp)) { OriDialogHost(content) }
     }
 }
 
 val SemanticsNodeInteraction.bounds: DpRect
     get() = getUnclippedBoundsInRoot()
+
+/**
+ * The window of the screen itself, where a finger touches: while a popup is open (a window of its own, as the controls
+ * to resize a widget), there are two roots, and the touches still go to the screen, the largest of them.
+ */
+fun ComposeTestRule.onScreenRoot(): SemanticsNodeInteraction {
+    val roots = onAllNodes(isRoot())
+    val nodes = roots.fetchSemanticsNodes()
+    val screen = nodes.indices.maxByOrNull { nodes[it].size.width.toLong() * nodes[it].size.height } ?: 0
+    return roots[screen]
+}

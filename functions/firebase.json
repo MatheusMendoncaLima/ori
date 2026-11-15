@@ -36,5 +36,18 @@
       "port": 4000
     },
     "singleProjectMode": true
+  },
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "cleanUrls": true,
+    "predeploy": [
+      "npm --prefix ../web run build",
+      "node -e \"const fs=require('fs');fs.rmSync('public',{recursive:true,force:true});fs.cpSync('../web/out','public',{recursive:true})\""
+    ]
   }
 }

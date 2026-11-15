@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The languages the person can choose for the ori alone, in the system settings (Android 13+).
+    One entry per language with texts: the default (values/) and one per values-xx/ folder.
+    AppLanguagesTest checks this list against the folders and against TranslatedLanguages (AppLocale.kt).
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="pt-BR" />
+    <locale android:name="en" />
+    <locale android:name="es" />
+</locale-config>

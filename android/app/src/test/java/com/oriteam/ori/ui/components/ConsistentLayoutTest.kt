@@ -28,15 +28,17 @@ import com.oriteam.ori.ui.app.screens.aac.BoardTabUiModel
 import com.oriteam.ori.ui.app.screens.aac.BoardsPane
 import com.oriteam.ori.ui.app.screens.aac.OrganizerItemUiModel
 import com.oriteam.ori.ui.app.screens.reports.ReportContent
+import com.oriteam.ori.ui.app.screens.routine.DayPart
 import com.oriteam.ori.ui.app.screens.routine.RepeatPicker
 import com.oriteam.ori.ui.app.screens.routine.RoutineStepUiModel
-import com.oriteam.ori.ui.app.screens.routine.accentIndexOf
+import com.oriteam.ori.ui.app.screens.routine.dayPartOf
 import com.oriteam.ori.ui.components.navigation.OriTopBar
 import com.oriteam.ori.ui.components.state.ContentState
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.LocalTime
 
 /** On a 360 dp phone the content margin is 24 dp; titles, buttons and lists start there. */
 @RunWith(AndroidJUnit4::class)
@@ -112,12 +114,15 @@ class ConsistentLayoutTest {
     }
 
     @Test
-    fun `an activity keeps its color in any list and on every day it repeats`() {
-        val monday = RoutineStepUiModel(id = "s__2026-11-02", title = "Terapia", seriesId = "s")
+    fun `an activity keeps its color in any list and on every day it repeats, and the color says when it is`() {
+        val monday =
+            RoutineStepUiModel(id = "s__2026-11-02", title = "Terapia", time = LocalTime.of(14, 0), seriesId = "s")
         val nextMonday = monday.copy(id = "s__2026-11-09")
+        val breakfast = RoutineStepUiModel(id = "b", title = "Café", time = LocalTime.of(8, 0))
 
-        assertEquals(accentIndexOf(monday, 6), accentIndexOf(nextMonday, 6))
-        assertEquals(accentIndexOf(monday, 6), accentIndexOf(RoutineStepUiModel(id = "s", title = "x"), 6))
+        assertEquals(dayPartOf(monday.time), dayPartOf(nextMonday.time))
+        assertEquals(DayPart.AFTERNOON, dayPartOf(monday.time))
+        assertEquals(DayPart.MORNING, dayPartOf(breakfast.time))
     }
 
     private fun hasRole(role: Role) = SemanticsMatcher.expectValue(SemanticsProperties.Role, role)

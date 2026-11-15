@@ -180,6 +180,8 @@ export async function acceptInvitation(
 
     const invitation = await transaction.get(invitationRef);
     if (!invitation.exists) {
+      // The app tells this apart from an unpublished function by this text
+      // (SERVER_NOT_FOUND_MESSAGE in FirestoreErrors.kt): keep them equal.
       throw new CareInvitationError("not-found", "Unknown code");
     }
     if (await isRetryOfAcceptedInvitation(transaction, invitation)) {

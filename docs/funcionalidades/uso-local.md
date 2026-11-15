@@ -99,7 +99,8 @@ cd android && ./gradlew testDevDebugUnitTest
 | Cenário | Testes |
 |---|---|
 | Persistência local, ids repetidos, apagar prancha com símbolos, contagem | `LocalRepositoriesTest` |
-| Migração: confirmação, pendência, recusa, duplicatas, união de pranchas, cache | `MoveLocalDataToAccountTest` |
+| Migração: confirmação, pendência, recusa, duplicatas, união de pranchas, cache, idioma das pranchas e frases | `MoveLocalDataToAccountTest` |
+| Banco do aparelho: versões 1 → 4, sem perder dados (a 4 acrescenta o idioma) | `OriDatabaseMigrationTest` |
 | Sessão: sem conta, retorno, login vence, offline com e sem cópia, apagar | `SessionViewModelTest` |
 
 ## 8. Limitações

@@ -1,6 +1,11 @@
 package com.oriteam.ori.ui.app.screens.aac
 
 import androidx.annotation.StringRes
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -9,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -24,12 +30,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
@@ -41,8 +49,10 @@ import com.oriteam.ori.R
 import com.oriteam.ori.domain.aac.SpeechState
 import com.oriteam.ori.ui.components.form.EqualWidthRow
 import com.oriteam.ori.ui.components.text.Text
+import com.oriteam.ori.ui.theme.LocalOriAppearance
 import com.oriteam.ori.ui.theme.OriDimensions
 import com.oriteam.ori.ui.theme.OriSpacing
+import com.oriteam.ori.ui.theme.StandardEasing
 
 /** On a tablet the actions stay together instead of stretching across the whole screen. */
 private val ActionsMaxWidth = 360.dp
@@ -92,6 +102,16 @@ fun AacMessageActions(
 }
 
 /** "Falar" is the main action, so it is the only filled button. While speaking it becomes "Parar". */
+private const val SPEAKING_SCALE = 1.04f
+
+/**
+ * An action without a message is quieter, but still readable: the default (38%) left the labels hard to read,
+ * and a different color on "Falar" alone made it look like the only one that worked.
+ */
+private const val DISABLED_CONTENT_ALPHA = 0.55f
+private const val DISABLED_CONTAINER_ALPHA = 0.12f
+private const val SPEAKING_BREATH_MILLIS = 700
+
 @Composable
 private fun SpeakAction(
     hasMessage: Boolean,
@@ -100,12 +120,35 @@ private fun SpeakAction(
     modifier: Modifier
 ) {
     val isSpeaking = speechState == SpeechState.SPEAKING
+    // Read while drawing: the button is not rebuilt at every frame of the breath.
+    val breathing: State<Float>? = if (isSpeaking && LocalOriAppearance.current.motion.movesThings) {
+        rememberInfiniteTransition(label = "Speaking").animateFloat(
+            initialValue = 1f,
+            targetValue = SPEAKING_SCALE,
+            animationSpec = infiniteRepeatable(
+                tween(SPEAKING_BREATH_MILLIS, easing = StandardEasing),
+                RepeatMode.Reverse
+            ),
+            label = "SpeakingScale"
+        )
+    } else {
+        null
+    }
     Button(
         onClick = if (isSpeaking) actions.onStop else actions.onSpeak,
         enabled = isSpeaking || hasMessage,
         shape = MaterialTheme.shapes.medium,
+        // Without a message it keeps its filled shape, and reads as quiet as the other actions without one.
+        colors = ButtonDefaults.buttonColors(
+            disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_CONTAINER_ALPHA),
+            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_CONTENT_ALPHA)
+        ),
         contentPadding = ActionPadding,
-        modifier = modifier
+        modifier = modifier.graphicsLayer {
+            val scale = breathing?.value ?: 1f
+            scaleX = scale
+            scaleY = scale
+        }
     ) {
         ActionContent(
             icon = if (isSpeaking) Icons.Filled.Close else Icons.Filled.PlayArrow,
@@ -125,9 +168,14 @@ private fun SecondaryAction(
     description: String? = null
 ) {
     val colors = if (isActive) {
-        ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+        ButtonDefaults.outlinedButtonColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_CONTENT_ALPHA)
+        )
     } else {
-        ButtonDefaults.outlinedButtonColors()
+        ButtonDefaults.outlinedButtonColors(
+            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_CONTENT_ALPHA)
+        )
     }
     OutlinedButton(
         onClick = onClick,
@@ -178,6 +226,12 @@ private fun MoreAction(hasMessage: Boolean, actions: AacMessageBarActions) {
             MoreMenuItem(Icons.Filled.Delete, R.string.aac_clear, hasMessage) {
                 isOpen = false
                 actions.onClear()
+            }
+            actions.onChangeBoard?.let { change ->
+                MoreMenuItem(Icons.AutoMirrored.Filled.List, R.string.aac_change_board, enabled = true) {
+                    isOpen = false
+                    change()
+                }
             }
             MoreMenuItem(Icons.Filled.Edit, R.string.aac_organize, enabled = true) {
                 isOpen = false

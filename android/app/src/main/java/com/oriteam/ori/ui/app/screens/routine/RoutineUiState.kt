@@ -20,7 +20,12 @@ data class RoutineUiState(
     /** Activity waiting for the person to confirm its deletion. */
     val pendingDeletion: RoutineStepUiModel? = null,
     /** Days of the open month that have activities, marked with a dot; empty while the week is shown. */
-    val daysWithActivities: Set<LocalDate> = emptySet()
+    val daysWithActivities: Set<LocalDate> = emptySet(),
+    /**
+     * The day the activities on screen belong to. Right after another day is chosen it is still the previous
+     * one, for the few milliseconds the new day takes to arrive: the list is replaced as a whole when it changes.
+     */
+    val contentDate: LocalDate? = null
 ) {
     /** Today, for the week strip. */
     val today: LocalDate get() = date.minusDays(daysFromToday)

@@ -15,6 +15,7 @@ import com.oriteam.ori.testing.activity
 import com.oriteam.ori.testing.fixedClock
 import com.oriteam.ori.testing.snapshotOf
 import com.oriteam.ori.testing.viewer
+import com.oriteam.ori.ui.app.screens.common.LOADING_GRACE_MILLIS
 import com.oriteam.ori.ui.app.screens.common.SYNC_NOTICE_DELAY_MILLIS
 import com.oriteam.ori.ui.components.state.ContentState
 import kotlinx.coroutines.cancel
@@ -107,6 +108,44 @@ class RoutineViewModelTest {
         advanceUntilIdle()
 
         assertEquals(2, routines.periodReads.size)
+    }
+
+    @Test
+    fun `another day replaces the list without passing through Carregando`() = runTest {
+        routines.routineByDay = mapOf(
+            DAY to snapshotOf(activity("a")),
+            DAY.plusDays(1) to snapshotOf(activity("b", date = DAY.plusDays(1)))
+        )
+        val viewModel = routineViewModel()
+        val shown = mutableListOf<ContentState<*>>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect { shown += it.content }
+        }
+        advanceUntilIdle()
+        shown.clear()
+
+        // A read from the device cache takes a few milliseconds: long enough to flash "Carregando".
+        routines.dayReadMillis = 40
+        viewModel.onSelectDate(DAY.plusDays(1))
+        advanceUntilIdle()
+
+        assertTrue(shown.none { it == ContentState.Loading })
+        assertEquals(listOf("b"), viewModel.steps().map { it.id })
+    }
+
+    @Test
+    fun `a day that takes long says Carregando after a moment, and the date changes at once`() = runTest {
+        routines.routine.value = snapshotOf(activity("a"))
+        val viewModel = routineViewModel()
+        routines.routine.value = null
+
+        viewModel.onSelectDate(DAY.plusDays(1))
+        assertEquals(DAY.plusDays(1), viewModel.uiState.value.date)
+        advanceTimeBy(LOADING_GRACE_MILLIS - 1)
+        assertTrue(viewModel.uiState.value.content is ContentState.Content)
+
+        advanceTimeBy(2)
+        assertEquals(ContentState.Loading, viewModel.uiState.value.content)
     }
 
     @Test

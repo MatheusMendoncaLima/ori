@@ -9,6 +9,7 @@ import com.google.firebase.firestore.FirebaseFirestoreException
 import com.oriteam.ori.data.firestore.FirestoreSchema
 import com.oriteam.ori.data.firestore.awaitWriteAcknowledgement
 import com.oriteam.ori.data.firestore.dataErrorFor
+import com.oriteam.ori.data.firestore.firestoreListenerExecutor
 import com.oriteam.ori.data.firestore.runDataOperation
 import com.oriteam.ori.domain.common.DataError
 import com.oriteam.ori.domain.common.DataResult
@@ -38,7 +39,9 @@ class FirestoreCloudPhotoRepository @Inject constructor(
         .collection(FirestoreSchema.PHOTOS)
 
     override fun observe(ownerUid: String, photoId: String): Flow<DataResult<CloudPhoto>> = callbackFlow {
-        val registration = photosOf(ownerUid).document(photoId).addSnapshotListener { snapshot, exception ->
+        val registration = photosOf(
+            ownerUid
+        ).document(photoId).addSnapshotListener(firestoreListenerExecutor) { snapshot, exception ->
             val result = if (exception != null || snapshot == null) {
                 DataResult.Failure(exception?.let(::dataErrorFor) ?: DataError.UNKNOWN)
             } else {

@@ -29,11 +29,23 @@ class ReportTilesTest {
             }
         }
 
-        val heights = listOf("Atividades concluídas", "Do planejado", "Vezes que se comunicou").map { label ->
+        val heights = listOf("Atividade concluída", "Do planejado", "Vezes que se comunicou").map { label ->
             composeRule.onNodeWithText(label, substring = true).fetchSemanticsNode().boundsInRoot.height
         }
 
         assertEquals(heights.first(), heights[1], 1f)
         assertEquals(heights.first(), heights[2], 1f)
+    }
+
+    @Test
+    fun `each count says its label in the singular or the plural, as its number asks`() {
+        composeRule.setContent {
+            OriTestWindow(widthDp = 360, heightDp = 780) {
+                ReportContent(RoutineReport(listOf(DayResult(LocalDate.of(2026, 11, 2), 3, 4)), speechCount = 1))
+            }
+        }
+
+        composeRule.onNodeWithText("Atividades concluídas").assertExists()
+        composeRule.onNodeWithText("Vez que se comunicou").assertExists()
     }
 }

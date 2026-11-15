@@ -17,7 +17,7 @@ fun canManageBoards(viewer: AacViewer): Boolean = when (viewer) {
 fun canUseSavedMessages(viewer: AacViewer): Boolean = viewer == AacViewer.Owner
 
 /**
- * Photos stay on the device that added them. A caregiver's photo would never reach the person's
- * device, so only the owner may add photos.
+ * Only the owner adds photos: they go to the owner's account, whose space and limit of photos are the owner's. A
+ * caregiver who manages the boards uses emoji, and keeps a photo the owner already chose.
  */
 fun canUseDevicePhotos(viewer: AacViewer): Boolean = viewer == AacViewer.Owner

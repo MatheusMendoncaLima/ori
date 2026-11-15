@@ -35,7 +35,9 @@ data class RoutineSeriesEntity(
 data class AacBoardEntity(
     @PrimaryKey val id: String,
     val name: String,
-    val position: Int
+    val position: Int,
+    /** Null for a board from before version 4 of the database: it is in the app's language. */
+    val language: String? = null
 )
 
 @Entity(
@@ -57,14 +59,24 @@ data class AacSymbolEntity(
     val label: String,
     val phrase: String?,
     val image: String?,
-    val position: Int
+    val position: Int,
+    /** [SymbolColor.key] of the chosen tile color; null (and every symbol from before version 5) has none. */
+    val color: String? = null,
+    /** The stored [com.oriteam.ori.domain.aac.WordClass] chosen for the word; null lets the tables say. */
+    val wordClass: String? = null
 )
 
 @Entity(tableName = "saved_messages")
 data class SavedMessageEntity(
     @PrimaryKey val id: String,
     val text: String,
-    val createdAtMillis: Long
+    val createdAtMillis: Long,
+    /** Null for a message from before version 4 of the database: it is in the app's language. */
+    val language: String? = null,
+    /** The chosen picture; null (and every message from before version 5) shows the app's picture. */
+    val emoji: String? = null,
+    /** The place the person moved it to; null (and every message from before version 6) was never moved. */
+    val position: Int? = null
 )
 
 /** How many times "Falar" was used on a day. Stays on the device: never sent to the account. */

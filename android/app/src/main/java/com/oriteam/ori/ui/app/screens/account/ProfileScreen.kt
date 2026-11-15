@@ -15,7 +15,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -45,11 +44,14 @@ import com.oriteam.ori.ui.components.form.OriTextButton
 import com.oriteam.ori.ui.components.icon.OriIcons
 import com.oriteam.ori.ui.components.list.OriMenuRow
 import com.oriteam.ori.ui.components.navigation.OriTopBar
+import com.oriteam.ori.ui.components.navigation.SubscreenHost
 import com.oriteam.ori.ui.components.navigation.rememberOpenSubscreen
 import com.oriteam.ori.ui.components.text.Text
 import com.oriteam.ori.ui.theme.LocalOriColors
+import com.oriteam.ori.ui.theme.OriAreaAccents
 import com.oriteam.ori.ui.theme.OriDimensions
 import com.oriteam.ori.ui.theme.OriSpacing
+import com.oriteam.ori.ui.theme.areaAccent
 
 private val HeaderAvatarSize = 64.dp
 
@@ -71,17 +73,20 @@ fun ProfileRoute(profile: UserProfile, actions: ProfileActions) {
     val subscreen = rememberOpenSubscreen<ProfilePane>()
     val back = subscreen::close
 
-    when (subscreen.current) {
-        null -> ProfileScreen(profile = profile, actions = actions, onOpen = subscreen::open)
-        ProfilePane.PERSONAL -> PersonalDataRoute(profile = profile, actions = actions, onNavigateBack = back)
-        ProfilePane.CAREGIVERS -> CaregiversRoute(profile = profile, onNavigateBack = back)
-        ProfilePane.CARE_RECIPIENTS -> CareRecipientsRoute(profile = profile, onNavigateBack = back)
-        ProfilePane.SETTINGS -> SettingsRoute(
-            isLocal = profile.isLocal,
-            onEraseLocalData = actions.onEraseLocalData,
-            onNavigateBack = back
-        )
-        ProfilePane.CONNECT -> ConnectAccountRoute(onNavigateBack = back)
+    SubscreenHost(subscreen) { current ->
+        when (current) {
+            null -> ProfileScreen(profile = profile, actions = actions, onOpen = subscreen::open)
+            ProfilePane.PERSONAL -> PersonalDataRoute(profile = profile, actions = actions, onNavigateBack = back)
+            ProfilePane.CAREGIVERS -> CaregiversRoute(profile = profile, onNavigateBack = back)
+            ProfilePane.CARE_RECIPIENTS -> CareRecipientsRoute(profile = profile, onNavigateBack = back)
+            ProfilePane.SETTINGS -> SettingsRoute(
+                ownerUid = profile.uid,
+                isLocal = profile.isLocal,
+                onEraseLocalData = actions.onEraseLocalData,
+                onNavigateBack = back
+            )
+            ProfilePane.CONNECT -> ConnectAccountRoute(onNavigateBack = back)
+        }
     }
 }
 
@@ -108,41 +113,38 @@ private fun ProfileScreen(profile: UserProfile, actions: ProfileActions, onOpen:
                     Spacer(modifier = Modifier.height(OriSpacing.Medium))
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(OriSpacing.Small)) {
-                    OriMenuRow(
-                        title = stringResource(R.string.profile_personal),
-                        icon = Icons.Filled.Person,
-                        accentIndex = 0,
-                        onClick = { onOpen(ProfilePane.PERSONAL) }
-                    )
                     if (!profile.isLocal) {
                         OriMenuRow(
                             title = stringResource(R.string.profile_caregivers),
                             description = stringResource(R.string.profile_caregivers_description),
                             icon = OriIcons.People,
-                            accentIndex = 3,
+                            accent = areaAccent(OriAreaAccents.PEOPLE),
                             onClick = { onOpen(ProfilePane.CAREGIVERS) }
                         )
                         OriMenuRow(
                             title = stringResource(R.string.main_care_recipients),
                             description = stringResource(R.string.profile_care_recipients_description),
                             icon = Icons.Filled.Favorite,
-                            accentIndex = 5,
+                            accent = areaAccent(OriAreaAccents.CARE),
                             onClick = { onOpen(ProfilePane.CARE_RECIPIENTS) }
                         )
                     }
                     OriMenuRow(
                         title = stringResource(R.string.profile_settings),
                         icon = Icons.Filled.Settings,
-                        accentIndex = 1,
+                        accent = null,
                         onClick = { onOpen(ProfilePane.SETTINGS) }
                     )
                 }
                 if (!profile.isLocal) {
                     Spacer(modifier = Modifier.height(OriSpacing.Medium))
-                    // Leaving deletes nothing, so it is not red; it still asks, because it is easy to tap by mistake.
+                    // Red, as in the wireframe, sets it apart from the rows above: it is a way out, not a page.
+                    // Leaving deletes nothing, so the dialog is not a destructive one; it still asks, because
+                    // it is easy to tap by mistake.
                     OriTextButton(
                         text = stringResource(R.string.account_sign_out),
-                        onClick = { isConfirmingSignOut = true }
+                        onClick = { isConfirmingSignOut = true },
+                        color = MaterialTheme.colorScheme.error
                     )
                 }
                 Spacer(modifier = Modifier.height(OriSpacing.Large))

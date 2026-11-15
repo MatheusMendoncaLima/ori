@@ -7,7 +7,9 @@ import com.oriteam.ori.domain.aac.SavedMessage
 import com.oriteam.ori.domain.aac.SavedMessageRepository
 import com.oriteam.ori.domain.aac.SpeechState
 import com.oriteam.ori.domain.aac.SpeechSynthesizer
+import com.oriteam.ori.domain.aac.SpeechVolume
 import com.oriteam.ori.domain.aac.SymbolDraft
+import com.oriteam.ori.domain.aac.VoiceOption
 import com.oriteam.ori.domain.common.DataResult
 import com.oriteam.ori.domain.common.ListSnapshot
 import com.oriteam.ori.domain.common.WriteStatus
@@ -18,8 +20,11 @@ import com.oriteam.ori.domain.photos.PhotoStore
 import com.oriteam.ori.domain.photos.StoredPhoto
 import com.oriteam.ori.domain.preferences.AacPreferences
 import com.oriteam.ori.domain.preferences.AacPreferencesRepository
+import com.oriteam.ori.domain.preferences.VoiceSettings
+import com.oriteam.ori.domain.preferences.VoiceSound
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
@@ -54,15 +59,29 @@ class FakeAacBoardRepository : AacBoardRepository {
 
     override fun newSymbolId(ownerUid: String, boardId: String) = "reserved-${++reservedIds}"
 
-    override suspend fun createBoard(ownerUid: String, name: String, position: Int) =
-        record(AacWrite("createBoard", name, position))
+    /** The language each new board was created in, in order. */
+    val boardLanguages = mutableListOf<String>()
+
+    override suspend fun createBoard(
+        ownerUid: String,
+        name: String,
+        position: Int,
+        language: String
+    ): DataResult<WriteStatus> {
+        boardLanguages += language
+        return record(AacWrite("createBoard", name, position))
+    }
 
     override suspend fun createBoardWithSymbols(
         ownerUid: String,
         name: String,
         position: Int,
-        symbols: List<SymbolDraft>
-    ) = record(AacWrite("createBoardWithSymbols", name, symbols))
+        symbols: List<SymbolDraft>,
+        language: String
+    ): DataResult<WriteStatus> {
+        boardLanguages += language
+        return record(AacWrite("createBoardWithSymbols", name, symbols))
+    }
 
     override suspend fun renameBoard(ownerUid: String, boardId: String, name: String) =
         record(AacWrite("renameBoard", boardId, name))
@@ -106,8 +125,42 @@ class FakeSavedMessageRepository : SavedMessageRepository {
     override fun observeSavedMessages(ownerUid: String): Flow<DataResult<List<SavedMessage>>> =
         messages.filterNotNull().onStart { subscriptions++ }
 
-    override suspend fun saveMessage(ownerUid: String, text: String): DataResult<WriteStatus> {
+    /** The language each message was saved in, in order. */
+    val savedLanguages = mutableListOf<String>()
+
+    /** The emoji each message was saved with, in order. */
+    val savedEmojis = mutableListOf<String?>()
+    val savedPositions = mutableListOf<Int?>()
+    val emojiChanges = mutableListOf<Pair<String, String?>>()
+
+    /** The places written by each move, in order. */
+    val reorders = mutableListOf<Map<String, Int>>()
+
+    override suspend fun saveMessage(
+        ownerUid: String,
+        text: String,
+        language: String,
+        emoji: String?,
+        position: Int?
+    ): DataResult<WriteStatus> {
         saved += text
+        savedLanguages += language
+        savedEmojis += emoji
+        savedPositions += position
+        return writeResult
+    }
+
+    override suspend fun reorderSavedMessages(ownerUid: String, positions: Map<String, Int>): DataResult<WriteStatus> {
+        reorders += positions
+        return writeResult
+    }
+
+    override suspend fun setSavedMessageEmoji(
+        ownerUid: String,
+        messageId: String,
+        emoji: String?
+    ): DataResult<WriteStatus> {
+        emojiChanges += messageId to emoji
         return writeResult
     }
 
@@ -117,16 +170,55 @@ class FakeSavedMessageRepository : SavedMessageRepository {
     }
 }
 
+/** The volumes of the voice, one per sound: [mutedSounds] are at zero; [raise] turns one up, as on a device. */
+class FakeSpeechVolume : SpeechVolume {
+    val mutedSounds = mutableSetOf<VoiceSound>()
+    val raised = mutableListOf<VoiceSound>()
+
+    /** Every volume at zero, or none. */
+    var muted: Boolean
+        get() = mutedSounds.isNotEmpty()
+        set(value) {
+            if (value) mutedSounds.addAll(VoiceSound.entries) else mutedSounds.clear()
+        }
+
+    override fun isMuted(sound: VoiceSound) = sound in mutedSounds
+
+    override fun raise(sound: VoiceSound) {
+        raised += sound
+        mutedSounds -= sound
+    }
+}
+
 /** Records what would be spoken. [state] decides whether a voice is available. */
 class FakeSpeechSynthesizer(initial: SpeechState = SpeechState.READY) : SpeechSynthesizer {
     override val state = MutableStateFlow(initial)
+    override val voices = MutableStateFlow<List<VoiceOption>>(emptyList())
+    override val failures = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val spoken = mutableListOf<String>()
+
+    /** Every configuration received, the latest last; [spokenWith] pairs each text with the one in force. */
+    val configured = mutableListOf<VoiceSettings>()
+    val spokenWith = mutableListOf<Pair<String, VoiceSettings?>>()
+
+    override fun configure(settings: VoiceSettings) {
+        configured += settings
+    }
     var stopCalls = 0
     var isClosed = false
 
-    override fun speak(text: String): Boolean {
+    /** Languages this "device" has no voice for: speaking in them fails, as on a real device. */
+    val missingLanguages = mutableSetOf<String>()
+
+    /** Each text with the language it was asked in (null: the app's). */
+    val spokenIn = mutableListOf<Pair<String, String?>>()
+
+    override fun speak(text: String, language: String?): Boolean {
         if (state.value != SpeechState.READY && state.value != SpeechState.SPEAKING) return false
+        if (language != null && language in missingLanguages) return false
         spoken += text
+        spokenIn += text to language
+        spokenWith += text to configured.lastOrNull()
         return true
     }
 

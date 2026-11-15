@@ -1,13 +1,14 @@
 package com.oriteam.ori.data.routine
 
 import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
 import com.oriteam.ori.data.firestore.FirestoreSchema
 import com.oriteam.ori.data.firestore.keyFor
-import com.oriteam.ori.domain.model.TaskStatus
 import com.oriteam.ori.domain.routine.ActivityDraft
 import com.oriteam.ori.domain.routine.RepeatRule
 import com.oriteam.ori.domain.routine.RoutineSeries
 import com.oriteam.ori.domain.routine.RoutineTask
+import com.oriteam.ori.domain.routine.TaskStatus
 import com.oriteam.ori.domain.routine.repeatRuleFromStoredText
 import com.oriteam.ori.domain.routine.toStoredText
 import java.time.LocalDate
@@ -114,3 +115,7 @@ internal fun ActivityDraft.toNewDocument(createdBy: String): Map<String, Any?> =
     FirestoreSchema.COMPLETED_AT to null,
     FirestoreSchema.COMPLETED_BY to null
 )
+
+/** `users/{owner}/routineTasks`: the activities, written by both routine repositories (a series batch included). */
+internal fun FirebaseFirestore.routineTasksOf(ownerUid: String) =
+    collection(FirestoreSchema.USERS).document(ownerUid).collection(FirestoreSchema.ROUTINE_TASKS)

@@ -128,7 +128,9 @@ private fun FieldWithLabel(label: String, modifier: Modifier, field: @Composable
 
 @Composable
 private fun PasswordVisibilityButton(isPasswordVisible: Boolean, onClick: () -> Unit) {
-    IconButton(onClick = onClick, modifier = Modifier.size(36.dp)) {
+    // 48 dp to touch and for screen readers (A1): a forced 36 dp was too small, and the default (40 dp) only grows
+    // to 48 for touch, not in the bounds that TalkBack and the Accessibility Scanner see.
+    IconButton(onClick = onClick, modifier = Modifier.size(OriDimensions.MinTouchTarget)) {
         Crossfade(
             targetState = isPasswordVisible,
             animationSpec = LocalOriAppearance.current.motion.decorative(200),
@@ -160,7 +162,9 @@ private fun OriInputBox(
     var isFocused by remember { mutableStateOf(false) }
     val colors = MaterialTheme.colorScheme
     val borderColor by animateColorAsState(
-        targetValue = if (isFocused) colors.primary else colors.outlineVariant,
+        // The edge of a control (3:1), not the light line of a card: on the light theme a white field on the light
+        // background is found only by it.
+        targetValue = if (isFocused) colors.primary else colors.outline,
         animationSpec = LocalOriAppearance.current.motion.feedback(150),
         label = "FieldBorderColor"
     )

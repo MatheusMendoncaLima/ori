@@ -34,6 +34,12 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/users/$(uid));
     }
 
+    // The owner marked the profile (deletingAt) before deleting the account: everything under it may go.
+    function isDeletingAccount(uid) {
+      return isPrimaryUserOwner(uid)
+        && 'deletingAt' in get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
     // An authenticated account without a profile has no access to app data.
     function isPrimaryUserOwner(ownerUid) {
       return isCaller(ownerUid) && hasProfile(ownerUid);
@@ -101,6 +107,7 @@ service cloud.firestore {
         && isValidTime(data.scheduledTime)
         && (data.description == null
             || (data.description is string && data.description.size() <= 500))
+        // 'archived' is reserved: nothing archives today, and the app hides it (TaskStatus in the app).
         && data.status in ['active', 'hidden_from_caregiver', 'archived']
         && data.ownerCanComplete is bool
         && data.isDone is bool
@@ -138,13 +145,35 @@ service cloud.firestore {
       // A profile is created once, by its owner. Older profiles may still have a role; nothing reads it.
       allow create: if isCaller(uid) && isValidNewProfile(request.resource.data);
 
-      // Only the display name can change.
-      allow update: if isCaller(uid)
-        && changesOnly(['displayName'])
-        && isValidName(request.resource.data.displayName);
+      // Only the display name can change, or the mark that the account is being deleted.
+      allow update: if isCaller(uid) && (
+          (changesOnly(['displayName']) && isValidName(request.resource.data.displayName))
+          || (changesOnly(['deletingAt']) && request.resource.data.deletingAt == request.time)
+        );
 
-      // Account deletion will be a server operation that also removes related data.
-      allow delete: if false;
+      // The owner deletes their account from the app (AccountDeletion), after everything under it.
+      allow delete: if isCaller(uid);
+
+      // ---------- Consent (LGPD art. 11 and 14) ----------
+
+      // The record of what the person accepted: theirs only, never read by a caregiver.
+      match /legal/{documentId} {
+        function isValidConsent(data) {
+          return data.keys().hasAll(['version', 'isAdult', 'guardianConsent', 'acceptedAt'])
+            && data.keys().hasOnly(['version', 'isAdult', 'guardianConsent', 'acceptedAt'])
+            && data.version is int && data.version >= 1
+            && data.isAdult is bool
+            && data.guardianConsent is bool
+            // Under 18, only with the legal guardian's confirmation.
+            && (data.isAdult || data.guardianConsent)
+            && data.acceptedAt == request.time;
+        }
+
+        allow get, delete: if isCaller(uid) && documentId == 'consent';
+        allow create, update: if isCaller(uid)
+          && documentId == 'consent'
+          && isValidConsent(request.resource.data);
+      }
 
       match /routineTasks/{taskId} {
         // The owner reads everything; a caregiver reads only active tasks
@@ -216,8 +245,9 @@ service cloud.firestore {
             && newTask().updatedAt == request.time
             && isValidCompletion(newTask()));
 
-        // Deleting follows the same ownership as editing.
-        allow delete: if isOwnActivityOfOwner() || caregiverManagesVisibleTask();
+        // Deleting follows the same ownership as editing. While the owner deletes the account (LGPD art. 18),
+        // the activities a caregiver reserved go too.
+        allow delete: if isOwnActivityOfOwner() || caregiverManagesVisibleTask() || isDeletingAccount(uid);
       }
 
       // ---------- Repeating activities ----------
@@ -232,7 +262,7 @@ service cloud.firestore {
 
         function isValidRepeat(value) {
           return value is string
-            && value.matches('^(weekly:[1-7](,[1-7]){0,6}:[1-4]|last_day|last_business_day)$');
+            && value.matches('^(weekly:[1-7](,[1-7]){0,6}:[1-4]|last_day|last_business_day|monthly_day)$');
         }
 
         function isValidSeries(data) {
@@ -279,7 +309,7 @@ service cloud.firestore {
             || (caregiverManagesVisibleSeries() && request.resource.data.status == 'active')
           );
 
-        allow delete: if isOwnSeriesOfOwner() || caregiverManagesVisibleSeries();
+        allow delete: if isOwnSeriesOfOwner() || caregiverManagesVisibleSeries() || isDeletingAccount(uid);
       }
 
       // ---------- Photos ----------
@@ -320,7 +350,7 @@ service cloud.firestore {
             && data.updatedAt == request.time;
         }
 
-        allow get: if isCaller(uid) && documentId == 'preferences';
+        allow get, delete: if isCaller(uid) && documentId == 'preferences';
         allow create, update: if isCaller(uid)
           && documentId == 'preferences'
           && isValidPreferences(request.resource.data);
@@ -351,11 +381,20 @@ service cloud.firestore {
         return value is int && value >= 0 && value < 1000;
       }
 
+      // The language a board or a saved message is in, as a language tag ("pt-BR", "es", "es-419"): the voice
+      // and the grammar of the communication follow it. Optional: what was saved before it existed has none.
+      function hasValidLanguage(data) {
+        return !data.keys().hasAny(['language'])
+          || (data.language is string && data.language.size() <= 35
+            && data.language.matches('^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$'));
+      }
+
       match /aacBoards/{boardId} {
         function isValidBoard(data) {
           return data.keys().hasAll(['name', 'position', 'createdBy', 'createdAt', 'updatedAt'])
-            && data.keys().hasOnly(['name', 'position', 'createdBy', 'createdAt', 'updatedAt'])
+            && data.keys().hasOnly(['name', 'position', 'createdBy', 'createdAt', 'updatedAt', 'language'])
             && data.name is string && data.name.size() > 0 && data.name.size() <= 40
+            && hasValidLanguage(data)
             && isValidPosition(data.position)
             && data.createdBy is string;
         }
@@ -380,8 +419,15 @@ service cloud.firestore {
                 'label', 'phrase', 'image', 'position', 'createdBy', 'createdAt', 'updatedAt'
               ])
               && data.keys().hasOnly([
-                'label', 'phrase', 'image', 'position', 'createdBy', 'createdAt', 'updatedAt'
+                'label', 'phrase', 'image', 'position', 'createdBy', 'createdAt', 'updatedAt', 'color',
+                'wordClass'
               ])
+              // The kind of word chosen in the form (WordClass in the app); null lets the app's tables say.
+              && (!('wordClass' in data) || data.wordClass == null
+                || data.wordClass in ['person', 'action', 'feeling', 'social', 'other'])
+              // The tile color chosen in the form (SymbolColor in the app); null follows the kind of word.
+              && (!('color' in data) || data.color == null
+                || data.color in ['yellow', 'mint', 'blue', 'pink', 'orange', 'lilac', 'green', 'none'])
               && data.label is string && data.label.size() > 0 && data.label.size() <= 40
               && (data.phrase == null
                 || (data.phrase is string && data.phrase.size() > 0 && data.phrase.size() <= 200))
@@ -390,8 +436,8 @@ service cloud.firestore {
               && data.createdBy is string;
           }
 
-          // Device photos exist only on the primary user's device, so only they may set a new one.
-          // A caregiver may keep the photo that is already there.
+          // Only the primary user sets a new photo: it goes to their account, whose space and photo limit
+          // are theirs. A caregiver may keep the photo that is already there.
           function setsNoForeignPhoto() {
             return isPrimaryUserOwner(uid)
               || request.resource.data.image == null
@@ -421,12 +467,30 @@ service cloud.firestore {
         allow list: if isPrimaryUserOwner(uid) && request.query.limit <= 50;
         allow create: if isPrimaryUserOwner(uid)
           && request.resource.data.keys().hasAll(['text', 'createdAt'])
-          && request.resource.data.keys().hasOnly(['text', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['text', 'createdAt', 'language', 'emoji', 'position'])
+          && hasValidLanguage(request.resource.data)
+          && hasValidSavedEmoji(request.resource.data)
+          && hasValidSavedPosition(request.resource.data)
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 500
           && request.resource.data.createdAt == request.time;
-        allow update: if false;
+        // Only the picture and the place change; the text and its language stay as they were saved.
+        allow update: if isPrimaryUserOwner(uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['emoji', 'position'])
+          && hasValidSavedEmoji(request.resource.data)
+          && hasValidSavedPosition(request.resource.data);
+      }
+
+      // The place the person moved the message to. Absent means never moved: on top, newest first.
+      function hasValidSavedPosition(data) {
+        return !('position' in data) || isValidPosition(data.position);
+      }
+
+      // The same limit as MAX_SAVED_EMOJI_LENGTH in the app. Absent means the app's picture.
+      function hasValidSavedEmoji(data) {
+        return !('emoji' in data)
+          || (data.emoji is string && data.emoji.size() > 0 && data.emoji.size() <= 32);
       }
     }
 
@@ -442,8 +506,9 @@ service cloud.firestore {
       allow list: if isLinkMember() && request.query.limit <= 50;
 
       // Links are created only by the acceptInvitation Cloud Function, which validates
-      // the invitation code. Clients can never create or delete them.
-      allow create, delete: if false;
+      // the invitation code. Either person may remove a link once it has ended (it keeps their names).
+      allow create: if false;
+      allow delete: if isLinkMember() && resource.data.status == 'revoked';
 
       allow update: if isSignedIn() && resource.data.status == 'active' && (
           // Either person can revoke the link. Revocation is final.

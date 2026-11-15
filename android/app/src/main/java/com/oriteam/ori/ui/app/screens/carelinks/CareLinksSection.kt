@@ -14,6 +14,7 @@ import com.oriteam.ori.ui.components.form.FormMessage
 import com.oriteam.ori.ui.components.form.FormMessageType
 import com.oriteam.ori.ui.components.form.OriNotice
 import com.oriteam.ori.ui.components.form.OriTextButton
+import com.oriteam.ori.ui.components.form.OriTransientNotice
 import com.oriteam.ori.ui.components.list.OriListItem
 import com.oriteam.ori.ui.components.list.SectionHeader
 import com.oriteam.ori.ui.components.settings.SettingsSwitchItem
@@ -44,7 +45,7 @@ fun CareLinksSection(
     Column(modifier = modifier.fillMaxWidth()) {
         SectionHeader(text = stringResource(R.string.links_title))
         FormMessage(messageRes = state.actionErrorRes, type = FormMessageType.ERROR)
-        if (state.hasPendingChange) OriNotice(stringResource(R.string.sync_pending_changes), isLive = true)
+        OriTransientNotice(stringResource(R.string.sync_pending_changes).takeIf { state.hasPendingChange })
         when (val links = state.links) {
             ContentState.Loading -> OriNotice(stringResource(R.string.state_loading))
             ContentState.Empty -> OriNotice(stringResource(R.string.links_empty))

@@ -18,6 +18,7 @@ import com.oriteam.ori.ui.components.form.OriPrimaryButton
 import com.oriteam.ori.ui.components.form.OriSecondaryButton
 import com.oriteam.ori.ui.components.navigation.OriTopBar
 import com.oriteam.ori.ui.components.text.Text
+import com.oriteam.ori.ui.components.text.rememberTimeFormat
 import com.oriteam.ori.ui.theme.OriDimensions
 import com.oriteam.ori.ui.theme.OriSpacing
 
@@ -43,7 +44,7 @@ fun ActivityDetailsPane(
                     Spacer(modifier = Modifier.height(OriSpacing.Small))
                     DetailLine(
                         label = stringResource(R.string.activity_time_label),
-                        value = step.timeLabel ?: stringResource(R.string.activity_no_time)
+                        value = step.time?.format(rememberTimeFormat()) ?: stringResource(R.string.activity_no_time)
                     )
                     DetailLine(
                         label = stringResource(R.string.activity_status_label),

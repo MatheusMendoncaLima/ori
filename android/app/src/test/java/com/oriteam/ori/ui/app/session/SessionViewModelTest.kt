@@ -103,6 +103,18 @@ class SessionViewModelTest {
     }
 
     @Test
+    fun `leaving the account forgets the copy of its profile kept on the device`() = runTest {
+        val viewModel = observedViewModel()
+        auth.signedInUser.value = user
+        viewModel.onAccountActive(profile)
+        assertEquals(profile, deviceProfiles.accountCopy.value)
+
+        viewModel.signOut()
+
+        assertEquals(null, deviceProfiles.accountCopy.value)
+    }
+
+    @Test
     fun `switching accounts never shows the previous profile`() = runTest {
         val viewModel = observedViewModel()
         auth.signedInUser.value = user

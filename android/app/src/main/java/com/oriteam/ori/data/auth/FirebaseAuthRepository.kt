@@ -6,6 +6,7 @@ import com.google.firebase.FirebaseTooManyRequestsException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.oriteam.ori.domain.auth.AuthError
 import com.oriteam.ori.domain.auth.AuthRepository
@@ -71,6 +72,10 @@ class FirebaseAuthRepository @Inject constructor(
         val result = runAuthOperation { firebaseAuth.sendPasswordResetEmail(email).await() }
         // An unknown address is reported as success so this screen cannot be used to discover accounts.
         return if (result == AuthResult.Failure(AuthError.INVALID_CREDENTIALS)) AuthResult.Success else result
+    }
+
+    override suspend fun signInWithGoogle(idToken: String): AuthResult = runAuthOperation {
+        firebaseAuth.signInWithCredential(GoogleAuthProvider.getCredential(idToken, null)).await()
     }
 
     private fun FirebaseUser.toDomain() = AuthenticatedUser(uid = uid, displayName = displayName)

@@ -10,7 +10,7 @@ enum class WindowWidthClass { COMPACT, MEDIUM, EXPANDED }
 enum class WindowHeightClass { COMPACT, MEDIUM, EXPANDED }
 
 /** How top-level destinations are presented. */
-enum class NavigationLayout { BOTTOM_BAR, RAIL, DRAWER }
+enum class NavigationLayout { BOTTOM_BAR, RAIL }
 
 /**
  * Layout decisions derived only from the space of the current window.
@@ -31,9 +31,9 @@ data class WindowLayout(
             isTabletop || widthClass == WindowWidthClass.COMPACT -> NavigationLayout.BOTTOM_BAR
             // A bottom bar would waste the little height of a landscape phone.
             heightClass == WindowHeightClass.COMPACT -> NavigationLayout.RAIL
-            widthClass == WindowWidthClass.MEDIUM -> NavigationLayout.RAIL
-            // Permanent labels help orientation; there is enough width to show them.
-            else -> NavigationLayout.DRAWER
+            // Also on wide windows: the rail keeps its labels, and a drawer took about a quarter of a tablet
+            // for four destinations, squeezing the two panes of Rotina.
+            else -> NavigationLayout.RAIL
         }
 
     /** List and detail side by side only when both panes keep a comfortable width. */

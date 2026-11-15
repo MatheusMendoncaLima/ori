@@ -13,13 +13,17 @@ internal data class Listed<T, R>(
     val noticeRes: Int? = null
 )
 
-/** Each row knows whether it can move up or down, so the arrows can be disabled at the ends. */
+/**
+ * Each row knows whether it can move up or down, so the arrows can be disabled at the ends. [shown] is the list as
+ * the screen shows it (the suggested board in the app's language); the actions then work on what the person sees.
+ */
 internal fun <T, R> listed(
     result: DataResult<ListSnapshot<T>>,
     order: Comparator<in T>,
+    shown: (List<T>) -> List<T> = { it },
     model: (T) -> R
 ): Listed<T, R> {
-    val ordered = (result as? DataResult.Success)?.value?.items.orEmpty().sortedWith(order)
+    val ordered = shown((result as? DataResult.Success)?.value?.items.orEmpty().sortedWith(order))
     val rows = ordered.mapIndexed { index, item ->
         OrganizerItemUiModel(model(item), index > 0, index < ordered.lastIndex)
     }

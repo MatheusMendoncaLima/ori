@@ -1,5 +1,7 @@
 package com.oriteam.ori.ui.app.screens.aac
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -13,6 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.oriteam.ori.R
 import com.oriteam.ori.domain.aac.AacViewer
 import com.oriteam.ori.ui.adaptive.AreaListDetailLayout
+import com.oriteam.ori.ui.components.motion.OriPaneTransition
 import com.oriteam.ori.ui.components.state.EmptyState
 
 /** The symbol form being shown, encoded as text so it survives process death. */
@@ -70,38 +73,43 @@ fun AacOrganizeRoute(
         )
     }
     val detailPane: @Composable (String, (() -> Unit)?) -> Unit = { selectedBoard, onBack ->
-        if (editor != null) {
-            SymbolEditorRoute(
-                editorKey = "symbol-$ownerUid-$selectedBoard-${editor.key}",
-                ownerUid = ownerUid,
-                viewer = viewer,
-                boardId = selectedBoard,
-                existing = (editor as? EditorPane.Edit)?.let { viewModel.symbol(it.symbolId) },
-                onDelete = (editor as? EditorPane.Edit)?.let { { viewModel.onDeleteSymbolRequest(it.symbolId) } },
-                onDone = { editorKey = null }
-            )
-        } else {
-            SymbolsPane(
-                state = state,
-                onNavigateBack = onBack,
-                onEditSymbol = { editorKey = EditorPane.Edit(it).key },
-                onAddSymbol = { editorKey = EditorPane.New.key },
-                onMoveSymbol = viewModel::onMoveSymbol,
-                onRenameBoard = { viewModel.onRenameBoardRequest(selectedBoard) },
-                onDeleteBoard = { viewModel.onDeleteBoardRequest(selectedBoard) },
-                onRetry = viewModel::onRetry
-            )
+        // The symbol form opens over the symbols of the board, as a step forward.
+        OriPaneTransition(target = editor, isForward = { _, to -> to != null }, label = "SymbolForm") { shown ->
+            if (shown != null) {
+                SymbolEditorRoute(
+                    editorKey = "symbol-$ownerUid-$selectedBoard-${shown.key}",
+                    ownerUid = ownerUid,
+                    viewer = viewer,
+                    boardId = selectedBoard,
+                    existing = (shown as? EditorPane.Edit)?.let { viewModel.symbol(it.symbolId) },
+                    onDelete = (shown as? EditorPane.Edit)?.let { { viewModel.onDeleteSymbolRequest(it.symbolId) } },
+                    onDone = { editorKey = null }
+                )
+            } else {
+                SymbolsPane(
+                    state = state,
+                    onNavigateBack = onBack,
+                    onEditSymbol = { editorKey = EditorPane.Edit(it).key },
+                    onAddSymbol = { editorKey = EditorPane.New.key },
+                    onMoveSymbol = viewModel::onMoveSymbol,
+                    onRenameBoard = { viewModel.onRenameBoardRequest(selectedBoard) },
+                    onDeleteBoard = { viewModel.onDeleteBoardRequest(selectedBoard) },
+                    onRetry = viewModel::onRetry,
+                    onAddSuggestedWords = viewModel::onAddSuggestedWords
+                )
+            }
         }
     }
 
     AreaListDetailLayout(
-        hasDetail = boardId != null,
+        selection = boardId,
         // An open symbol form closes first, then the board.
         onBack = { if (editorKey != null) editorKey = null else viewModel.onOpenBoard(null) },
         list = { listModifier -> boardsPane(listModifier, onNavigateBack) },
-        detail = { onBack -> boardId?.let { detailPane(it, onBack) } },
+        detail = { board, onBack -> detailPane(board, onBack) },
         emptyDetail = {
             EmptyState(
+                icon = Icons.AutoMirrored.Filled.List,
                 title = stringResource(R.string.aac_choose_board_title),
                 message = stringResource(R.string.aac_choose_board_message)
             )

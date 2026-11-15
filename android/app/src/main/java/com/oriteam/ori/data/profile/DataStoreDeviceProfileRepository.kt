@@ -58,6 +58,13 @@ class DataStoreDeviceProfileRepository @Inject constructor(
         }
     }
 
+    override suspend fun clearAccountProfileCopy() {
+        dataStore.edit {
+            it.remove(ACCOUNT_UID_KEY)
+            it.remove(ACCOUNT_NAME_KEY)
+        }
+    }
+
     private companion object {
         val LOCAL_ACTIVE_KEY = booleanPreferencesKey("local_profile_active")
         val LOCAL_NAME_KEY = stringPreferencesKey("local_profile_name")

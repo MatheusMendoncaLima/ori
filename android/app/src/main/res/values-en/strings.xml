@@ -1,0 +1,39 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Textos comuns em inglês: navegação, estados, erros e sincronização. -->
+    <string name="error_missing_sign_in_fields">Enter your email and password</string>
+    <string name="error_missing_reset_email">Enter your email to reset your password</string>
+    <string name="error_missing_registration_fields">Fill in all the fields</string>
+    <string name="error_password_mismatch">The passwords do not match</string>
+    <!-- Keep the number in sync with MIN_PASSWORD_LENGTH in CredentialsValidation.kt. -->
+    <string name="error_password_too_short">The password must have at least 6 characters</string>
+    <string name="error_invalid_email">This email is not valid</string>
+    <string name="error_invalid_credentials">Incorrect email or password</string>
+    <string name="error_email_already_in_use">This email is already in use</string>
+    <string name="error_weak_password">Choose a stronger password</string>
+    <string name="error_user_disabled">This account is disabled</string>
+    <string name="error_too_many_requests">Too many attempts. Wait a little and try again</string>
+    <string name="error_network_unavailable">No connection. Check your internet and try again</string>
+    <string name="error_profile_update_failed">Your account was created, but your name could not be saved</string>
+    <string name="error_unknown">Something went wrong. Try again</string>
+    <string name="error_service_unavailable">This service is not available yet. Try again later</string>
+    <!-- Shared actions and states -->
+    <string name="action_back">Back</string>
+    <string name="action_retry">Try again</string>
+    <string name="state_loading">Loading…</string>
+    <string name="state_error_title">Could not load</string>
+    <!-- Session and data errors (DataError) -->
+    <string name="error_permission_denied">You do not have permission to see or change this data</string>
+    <string name="error_not_found">We could not find what you were looking for</string>
+    <string name="error_invalid_input">The information entered is not valid</string>
+    <string name="error_action_not_possible">This cannot be done right now</string>
+    <string name="error_missing_profile_name">Enter your name</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="main_my_routine">My routine</string>
+    <string name="main_care_recipients">People I support</string>
+    <string name="sync_showing_saved_data">No connection. Showing the last version saved on this device.</string>
+    <string name="sync_pending_changes">Change saved on this device. It will be sent when there is a connection.</string>
+    <string name="main_home">Home</string>
+    <string name="main_profile">Profile</string>
+    <string name="main_routine">Routine</string>
+    <string name="main_sentences">Phrases</string>
+</resources>

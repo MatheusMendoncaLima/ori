@@ -6,8 +6,11 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.oriteam.ori.domain.preferences.AacPreferences
+import com.oriteam.ori.domain.preferences.MAX_VOICE_PITCH
 import com.oriteam.ori.domain.preferences.MessageMode
 import com.oriteam.ori.domain.preferences.SymbolSize
+import com.oriteam.ori.domain.preferences.VoiceSettings
+import com.oriteam.ori.domain.preferences.VoiceSound
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -40,6 +43,36 @@ class DataStoreAacPreferencesRepositoryTest {
             AacPreferences(symbolSize = SymbolSize.LARGE, messageMode = MessageMode.SPEAK_IMMEDIATELY),
             repository.preferences.first()
         )
+    }
+
+    @Test
+    fun `the voice, its tone, its speed and its volume are kept, inside the range engines understand`() = runTest {
+        val repository = DataStoreAacPreferencesRepository(dataStore())
+        val chosen = VoiceSettings(voiceId = "pt-br-x-afs-local", pitch = 9f, rate = 1.1f, sound = VoiceSound.RING)
+
+        repository.update { it.copy(voice = chosen) }
+
+        assertEquals(chosen.copy(pitch = MAX_VOICE_PITCH), repository.preferences.first().voice)
+    }
+
+    @Test
+    fun `the order of the ready-made phrases is kept`() = runTest {
+        val repository = DataStoreAacPreferencesRepository(dataStore())
+        val order = listOf("help", "yes", "not_understood")
+
+        // One write per test: a second rename of the file fails on Windows.
+        repository.update { it.copy(readyPhraseOrder = order) }
+
+        assertEquals(order, repository.preferences.first().readyPhraseOrder)
+    }
+
+    @Test
+    fun `with no order chosen, none is stored and the app's order stays`() = runTest {
+        val repository = DataStoreAacPreferencesRepository(dataStore())
+
+        repository.update { it.copy(symbolSize = SymbolSize.LARGE, readyPhraseOrder = emptyList()) }
+
+        assertEquals(AacPreferences(symbolSize = SymbolSize.LARGE), repository.preferences.first())
     }
 
     @Test

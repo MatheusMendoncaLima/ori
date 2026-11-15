@@ -11,6 +11,9 @@ enum class DataError {
     INVALID_INPUT,
     PRECONDITION_FAILED,
     CONFLICT,
+
+    /** The server operation is not published or not reachable as such (not the person's connection). */
+    SERVICE_UNAVAILABLE,
     UNKNOWN
 }
 

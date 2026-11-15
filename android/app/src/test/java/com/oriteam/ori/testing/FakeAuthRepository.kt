@@ -34,6 +34,16 @@ class FakeAuthRepository(var nextResult: AuthResult = AuthResult.Success) : Auth
         return nextResult
     }
 
+    val googleTokens = mutableListOf<String>()
+
+    override suspend fun signInWithGoogle(idToken: String): AuthResult {
+        googleTokens += idToken
+        if (nextResult == AuthResult.Success) {
+            signedInUser.value = AuthenticatedUser(uid = "google-uid", displayName = "Ana")
+        }
+        return nextResult
+    }
+
     override fun signOut() {
         signedInUser.value = null
     }

@@ -13,7 +13,9 @@ data class AacMessageBarActions(
     val onOrganize: () -> Unit = {},
     val onPreferences: () -> Unit = {},
     /** Keeps a typed word on the board, with a picture; null when no board is open. */
-    val onSaveWord: ((String) -> Unit)? = null
+    val onSaveWord: ((String) -> Unit)? = null,
+    /** Opens the choice of board from the "Mais" menu; null when there is no board to choose. */
+    val onChangeBoard: (() -> Unit)? = null
 ) {
     companion object {
         val None = AacMessageBarActions({}, {}, {}, {}, {}, {}, {}, {})

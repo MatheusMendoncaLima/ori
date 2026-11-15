@@ -4,7 +4,6 @@ import com.oriteam.ori.domain.carelink.CareLinkPermissions
 import com.oriteam.ori.domain.common.DataError
 import com.oriteam.ori.domain.common.DataResult
 import com.oriteam.ori.domain.common.WriteStatus
-import com.oriteam.ori.domain.model.TaskStatus
 import com.oriteam.ori.testing.FakeRoutineRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first

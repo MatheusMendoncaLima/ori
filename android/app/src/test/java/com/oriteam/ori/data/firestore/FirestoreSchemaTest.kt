@@ -7,7 +7,7 @@ import com.oriteam.ori.data.routine.routineTaskFrom
 import com.oriteam.ori.domain.carelink.CareLinkPermissions
 import com.oriteam.ori.domain.carelink.CareLinkStatus
 import com.oriteam.ori.domain.common.DataError
-import com.oriteam.ori.domain.model.TaskStatus
+import com.oriteam.ori.domain.routine.TaskStatus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -84,5 +84,15 @@ class FirestoreSchemaTest {
         assertEquals(DataError.CONFLICT, dataErrorFor(FirebaseFunctionsException.Code.ALREADY_EXISTS))
         assertEquals(DataError.PRECONDITION_FAILED, dataErrorFor(FirebaseFunctionsException.Code.FAILED_PRECONDITION))
         assertEquals(DataError.UNKNOWN, dataErrorFor(FirebaseFirestoreException.Code.INTERNAL))
+    }
+
+    @Test
+    fun `an unknown invitation code is not found, but a missing server function is a service error`() {
+        val notFound = FirebaseFunctionsException.Code.NOT_FOUND
+
+        assertEquals(DataError.NOT_FOUND, dataErrorFor(notFound, SERVER_NOT_FOUND_MESSAGE))
+        assertEquals(DataError.SERVICE_UNAVAILABLE, dataErrorFor(notFound, "NOT_FOUND"))
+        assertEquals(DataError.SERVICE_UNAVAILABLE, dataErrorFor(notFound, null))
+        assertEquals(DataError.CONFLICT, dataErrorFor(FirebaseFunctionsException.Code.ALREADY_EXISTS, "Link"))
     }
 }

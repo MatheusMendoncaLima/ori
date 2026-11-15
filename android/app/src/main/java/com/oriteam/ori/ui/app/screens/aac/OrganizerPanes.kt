@@ -1,40 +1,52 @@
 package com.oriteam.ori.ui.app.screens.aac
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.oriteam.ori.R
 import com.oriteam.ori.ui.adaptive.CenteredContent
-import com.oriteam.ori.ui.components.form.EqualWidthRow
 import com.oriteam.ori.ui.components.form.FormMessage
 import com.oriteam.ori.ui.components.form.FormMessageType
-import com.oriteam.ori.ui.components.form.OriNotice
 import com.oriteam.ori.ui.components.form.OriPrimaryButton
 import com.oriteam.ori.ui.components.form.OriSecondaryButton
+import com.oriteam.ori.ui.components.form.OriTransientNotice
+import com.oriteam.ori.ui.components.icon.OriIcons
 import com.oriteam.ori.ui.components.list.OriListItem
 import com.oriteam.ori.ui.components.list.OriOpenArrow
+import com.oriteam.ori.ui.components.motion.itemAnimation
 import com.oriteam.ori.ui.components.navigation.OriTopBar
 import com.oriteam.ori.ui.components.state.EmptyState
 import com.oriteam.ori.ui.components.state.StatefulContent
+import com.oriteam.ori.ui.components.text.Text
 import com.oriteam.ori.ui.theme.LocalOriAppearance
 import com.oriteam.ori.ui.theme.OriDimensions
 import com.oriteam.ori.ui.theme.OriSpacing
@@ -57,7 +69,7 @@ fun BoardsPane(
         OriTopBar(title = title, onNavigateBack = onNavigateBack)
         CenteredContent(maxWidth = OriDimensions.ContentMaxWidth) {
             FormMessage(messageRes = state.actionErrorRes, type = FormMessageType.ERROR)
-            state.syncNoticeRes?.let { OriNotice(stringResource(it), isLive = true) }
+            OriTransientNotice(state.syncNoticeRes?.let { stringResource(it) })
             if (state.canManage) {
                 OriPrimaryButton(text = stringResource(R.string.aac_new_board), onClick = onCreateBoard)
             }
@@ -67,6 +79,7 @@ fun BoardsPane(
             onRetry = onRetry,
             emptyContent = {
                 EmptyState(
+                    icon = OriIcons.Chat,
                     title = stringResource(R.string.aac_no_boards_title),
                     message = stringResource(R.string.aac_organize_empty_message)
                 )
@@ -76,6 +89,7 @@ fun BoardsPane(
             OrganizerList {
                 items(boards, key = { it.item.id }) { row ->
                     OriListItem(
+                        modifier = Modifier.itemAnimation(this, LocalOriAppearance.current.motion),
                         headline = row.item.name,
                         isSelected = row.item.id == state.selectedBoardId,
                         onClick = { onOpenBoard(row.item.id) },
@@ -106,21 +120,31 @@ fun SymbolsPane(
     onRenameBoard: () -> Unit,
     onDeleteBoard: () -> Unit,
     onRetry: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onAddSuggestedWords: () -> Unit = {}
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        OriTopBar(title = state.selectedBoardName.orEmpty(), onNavigateBack = onNavigateBack)
+        OriTopBar(
+            title = state.selectedBoardName.orEmpty(),
+            onNavigateBack = onNavigateBack,
+            actions = { if (state.canManage) BoardMenu(onRenameBoard = onRenameBoard, onDeleteBoard = onDeleteBoard) }
+        )
         if (state.canManage) {
             CenteredContent(maxWidth = OriDimensions.ContentMaxWidth) {
                 OriPrimaryButton(text = stringResource(R.string.aac_add_symbol), onClick = onAddSymbol)
                 Spacer(modifier = Modifier.height(OriSpacing.Small))
-                EqualWidthRow(modifier = Modifier.fillMaxWidth()) {
-                    OriSecondaryButton(text = stringResource(R.string.aac_rename_board), onClick = onRenameBoard)
+                // An older suggested board can take the words added to it since (see StarterVocabulary).
+                if (state.suggestedWordsToAdd > 0) {
                     OriSecondaryButton(
-                        text = stringResource(R.string.aac_delete_board),
-                        onClick = onDeleteBoard,
-                        color = MaterialTheme.colorScheme.error
+                        text = pluralStringResource(
+                            R.plurals.aac_add_suggested_words,
+                            state.suggestedWordsToAdd,
+                            state.suggestedWordsToAdd
+                        ),
+                        onClick = onAddSuggestedWords,
+                        enabled = !state.isAddingSuggestedWords
                     )
+                    Spacer(modifier = Modifier.height(OriSpacing.Small))
                 }
             }
         }
@@ -129,6 +153,7 @@ fun SymbolsPane(
             onRetry = onRetry,
             emptyContent = {
                 EmptyState(
+                    icon = OriIcons.Chat,
                     title = stringResource(R.string.aac_board_empty_title),
                     message = stringResource(R.string.aac_organize_board_empty_message)
                 )
@@ -137,9 +162,58 @@ fun SymbolsPane(
         ) { symbols ->
             OrganizerList {
                 items(symbols, key = { it.item.id }) { row ->
-                    SymbolRow(row, state.canManage, onEditSymbol, onMoveSymbol)
+                    Box(
+                        modifier = Modifier.itemAnimation(this, LocalOriAppearance.current.motion)
+                    ) { SymbolRow(row, state.canManage, onEditSymbol, onMoveSymbol) }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Renaming and deleting a board are rare, so they wait in a menu of the title bar, as in the wireframe, instead
+ * of two full-width buttons that pushed the symbols to the middle of a phone screen. Deleting is in the error color
+ * and still asks first.
+ */
+@Composable
+private fun BoardMenu(onRenameBoard: () -> Unit, onDeleteBoard: () -> Unit) {
+    var isOpen by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { isOpen = true }) {
+            Icon(imageVector = Icons.Filled.MoreVert, contentDescription = stringResource(R.string.aac_board_more))
+        }
+        DropdownMenu(expanded = isOpen, onDismissRequest = { isOpen = false }) {
+            DropdownMenuItem(
+                text = {
+                    Text(text = stringResource(R.string.aac_rename_board), style = MaterialTheme.typography.labelLarge)
+                },
+                leadingIcon = { Icon(imageVector = Icons.Filled.Edit, contentDescription = null) },
+                onClick = {
+                    isOpen = false
+                    onRenameBoard()
+                }
+            )
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = stringResource(R.string.aac_delete_board),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.Delete,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                },
+                onClick = {
+                    isOpen = false
+                    onDeleteBoard()
+                }
+            )
         }
     }
 }

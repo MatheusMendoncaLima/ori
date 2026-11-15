@@ -90,6 +90,9 @@ flowchart LR
 - **Dois painéis:** o dia fica à esquerda; detalhes ou formulário, à direita.
 - **Um painel:** os detalhes e o formulário ocupam a tela, e o "voltar" do
   sistema retorna ao dia.
+- **Trocar de dia fecha os detalhes:** escolher outro dia (as setas, arrastar a semana, tocar num dia) fecha os
+  detalhes abertos, porque a atividade é de outro dia. Antes, o painel dizia "Atividade não encontrada — pode ter sido
+  excluída", sem nada ter sido apagado (G6). Salvar numa data diferente continua abrindo os detalhes no dia novo.
 
 ## 5. Fluxo de cada operação
 
@@ -183,7 +186,7 @@ sequenceDiagram
 | Estado | Como aparece |
 |---|---|
 | Carregando | Indicador de progresso |
-| Dia vazio | "Nenhuma atividade ainda", com orientação |
+| Dia vazio | "Nada neste dia" e "Toque em \"Adicionar atividade\"…", com espaço para o botão flutuante |
 | Erro (rede ou permissão) | Mensagem e "Tentar novamente" |
 | Dados do aparelho (offline) | Aviso discreto acima da lista |
 | Alteração aguardando conexão | "Alteração salva no aparelho…" |
@@ -204,6 +207,19 @@ validação são mapeadas por um `when` exaustivo (`RoutineMessages.kt`).
 | Atividades já lidas | Cache do Firestore (offline) |
 | Alterações feitas offline | Fila do Firestore, enviada quando a conexão voltar |
 
+**O rascunho é de uma abertura só.** O ViewModel do formulário vive mais que o formulário, então o
+rascunho continuava lá quando o formulário era fechado pelo voltar do sistema, que não passa por
+"Cancelar". Na próxima "Adicionar atividade" ele voltava com o texto e **o dia** antigos. Ao editar a
+mesma atividade de novo, mostrava as mudanças abandonadas em vez do que está salvo (falha B2,
+corrigida em 07/11/2026). Agora cada abertura recebe um nome (`rememberFormOpening`, em
+`ui/components/form`):
+
+- o nome sobrevive à rotação, ao sistema fechar o app e à visita a outra área, e o rascunho continua;
+- um formulário fechado e aberto de novo ganha outro nome, e o `start` descarta o rascunho anterior.
+
+O formulário de símbolos da CAA (`SymbolEditorViewModel`) faz o mesmo e ainda apaga as fotos que o
+rascunho abandonado tinha importado.
+
 ## 8. Testes
 
 ```bash
@@ -217,8 +233,8 @@ cd functions/security-tests && npm test
 | **Consulta por data** | `RoutineViewModelTest` (anterior, próximo e hoje consultam cada dia); emulador: "days are queried…" e "a query by date returns only that day" |
 | **Duplicação** | `RoutineDomainTest` (nome, data e hora; edição não conta como duplicata); `ActivityEditorViewModelTest` (bloqueio antes de gravar; toque duplo com rede lenta grava uma vez) |
 | **Falhas de rede** | `RoutineViewModelTest` (erro na leitura e nova tentativa; dados do cache; alteração pendente); `ActivityEditorViewModelTest` (falha mantém o formulário; gravação offline aceita como pendente) |
-| **Recuperação após reiniciar** | `RoutineViewModelTest` (dia restaurado); `ActivityEditorViewModelTest` (rascunho e id restaurados, sem duplicar ao salvar; fechar descarta o rascunho) |
-| **Layout adaptativo** | `RoutineScreenLayoutTest` (dois painéis em área larga; um painel com voltar em área estreita) |
+| **Recuperação após reiniciar** | `RoutineViewModelTest` (dia restaurado); `ActivityEditorViewModelTest` (rascunho e id restaurados, sem duplicar ao salvar; fechar descarta o rascunho; fechado com o voltar do sistema, abre de novo vazio e no dia escolhido; editar de novo mostra o que está salvo); `FormOpeningTest` (a abertura mantém o nome ao recriar a tela e muda ao abrir de novo) |
+| **Layout adaptativo** | `RoutineScreenLayoutTest` (dois painéis em área larga; um painel com voltar em área estreita; mudar de semana fecha os detalhes em vez de dizer que a atividade sumiu) |
 | **Leitura compartilhada** | `SharedRoutineReadingsTest` (duas telas no mesmo dia abrem uma leitura; trocar de dia mantém a das repetições; tudo para depois que a última tela sai; depois de um erro, tentar de novo abre outra leitura) |
 | **Depois de salvar** | `RoutinePaneTest` (criar volta para a lista; editar volta para os detalhes); `RoutineScreenLayoutTest` (os detalhes esperam o dia carregar); `ActivityEditorViewModelTest` (uma repetição é salva sem dia) |
 
@@ -265,7 +281,7 @@ Todas estas telas usam os **mesmos dados** de `RoutineRepository`, então marcar
 |---|---|
 | Minha rotina | A semana (`WeekStrip`), a linha do tempo do dia e "+ Adicionar atividade" |
 | Tarefas | As atividades de hoje como lista, com os filtros Pendentes, Concluídas e Todas |
-| Início | O progresso de hoje, a próxima atividade e os atalhos |
+| Início | A saudação com o primeiro nome ("Olá, Ana!"), o progresso de hoje, a próxima atividade e os atalhos |
 | Relatórios | Tarefas concluídas, percentual cumprido e uso de CAA, na semana ou no mês, com gráfico e lista por dia |
 
 **Relatórios:** são calculados na hora a partir dos dias, sem uma segunda cópia dos dados. Um mês custa no máximo 31 consultas pequenas e, offline, usa o que está no aparelho. Dias sem atividades não entram no percentual. O gráfico tem os mesmos valores na lista "Ver relatórios detalhados", para quem não lê gráficos.
@@ -293,7 +309,9 @@ As leituras rodam em um escopo que dura o app inteiro, criado em `DataModule.pro
 
 ## Atividades que se repetem
 
-**O que a pessoa vê:** no formulário há círculos com os dias da semana, como no alarme do relógio Samsung, uma frase dizendo o que foi escolhido e atalhos: Não repete, Todos os dias, Dias úteis, Fim de semana, Último dia do mês e Último dia útil do mês. Com dias escolhidos, dá para repetir toda semana ou a cada 2, 3 ou 4 semanas.
+**O que a pessoa vê:** no formulário há atalhos (Não repete, Todos os dias, Dias úteis, Fim de semana, Último dia do mês e Último dia útil do mês), depois o rótulo "Ou escolha os dias da semana" e círculos com os dias, como no alarme do relógio Samsung, e uma frase dizendo o que foi escolhido. Com dias escolhidos, dá para repetir toda semana ou a cada 2, 3 ou 4 semanas. Até 09/11/2026 os círculos vinham antes dos atalhos e sem rótulo, e nada dizia que tocar num deles cria uma repetição.
+
+**Salvar sem rolar (09/11/2026):** "Salvar" e "Cancelar" ficam numa barra fixa embaixo do formulário (`FormActionBar`), acima do teclado. Antes ficavam depois de Repetir e das opções, fora da tela do celular. Teste: `ActivityEditorScreenTest`.
 
 **Como funciona:** só a regra é guardada, em `users/{dono}/routineSeries/{id}`, nunca uma cópia por dia. Por isso não tem data de fim e custa um documento. `RepeatingRoutineRepository` junta as atividades do dia com as regras que caem nele, e o resto do app recebe `RoutineTask` comuns.
 
@@ -329,7 +347,10 @@ flowchart LR
 
 **Semana e mês (`RoutineCalendar`):** arrastar para baixo, sobre o calendário ou sobre o dia, abre o mês inteiro; arrastar para cima volta à semana do dia escolhido. A barrinha abaixo do calendário mostra que dá para arrastar, e tocar nela faz o mesmo, para quem não consegue arrastar. Leitores de tela a anunciam como botão. Quem escuta o gesto é `rememberCalendarDragConnection`, que só usa o que a lista não usou: um arraste que rolou a lista ou um movimento curto (menos de 48 dp) não muda nada. Com o mês aberto, arrastar para o lado troca de mês. Dias de outro mês aparecem apagados, no mês e na semana.
 
-**Primeiro dia da semana:** domingo, como nos calendários brasileiros. Ele vale para os calendários, os círculos de repetição, "a cada N semanas" e "esta semana" nos relatórios. Para começar na segunda, troque só `FIRST_DAY_OF_WEEK` em `domain/routine/WeekStart.kt`. Ao trocar, as repetições "a cada 2, 3 ou 4 semanas" que incluem domingo mudam de semana.
+**Primeiro dia da semana:** são dois, de propósito (`domain/routine/WeekStart.kt`):
+
+- **Na tela** (`firstDayOfWeek`): o do idioma do app, domingo em português e na maioria do inglês, segunda em espanhol da Espanha. Vale para os calendários, os círculos de repetição e "esta semana" nos relatórios.
+- **Nas repetições** (`REPEAT_WEEK_START`): sempre domingo, e não deve mudar. Ele decide em que semanas cai "a cada 2, 3 ou 4 semanas"; se mudasse com o idioma, uma série "a cada 2 semanas, domingo e segunda" cairia em dias diferentes para duas pessoas com idiomas diferentes. Teste: `WeekStartTest`.
 
 No celular deitado, o mês rola dentro do próprio espaço. Os dias com atividades têm um ponto (veja o fim deste documento).
 
@@ -354,3 +375,61 @@ No celular deitado, o mês rola dentro do próprio espaço. Os dias com atividad
 **Dias da repetição.** Cada dia ocupa uma fatia igual da linha, com 48 dp de altura; o círculo continua com 40 dp.
 
 **Testes:** `RoutedRepositoriesTest` (o `getDays` chega ao Firestore e não vira uma consulta por dia), `RoutineViewModelTest` (marcas do mês), `UsabilityTest` (relógio, área dos dias, mês dito pelo leitor de tela, data em Tarefas), `RepeatingRoutineRepositoryTest` e `LocalRepositoriesTest` (repetição ligada e desligada numa gravação), emulador: "an activity becomes a series, and back, in one batch" e "the owner reads a period with one bounded range query".
+
+## Trocar de dia sem piscar (07/11/2026)
+
+- **Ao escolher outro dia:**
+  - A data muda na hora.
+  - A lista do dia anterior fica na tela até a do novo dia chegar, o que costuma levar poucos milissegundos, vindo do cache do aparelho.
+  - Quando a nova lista chega, ela aparece de uma vez, sem esmaecer cartão por cartão.
+- **Quando a leitura passa de 300 ms** (`LOADING_GRACE_MILLIS`), aparece "Carregando".
+- **Detalhe aberto:** espera o novo dia, em vez de dizer "atividade não encontrada".
+- **Onde está no código:** `loadingAfter`, em `RoutineViewModel`. `RoutineUiState.contentDate` diz a que dia pertence a lista na tela.
+- **Testes** (em `RoutineViewModelTest`):
+  - "another day replaces the list without passing through Carregando";
+  - "a day that takes long says Carregando after a moment, and the date changes at once".
+
+## Mudanças de 07/11/2026 (segunda rodada)
+
+- **Início, "A seguir".** É a primeira atividade não feita com horário ainda por vir, ou sem horário. As de horário
+  já passado e não feitas são contadas à parte ("1 atividade de mais cedo ainda não foi feita"), em vez de aparecer
+  como "a seguir" às três da tarde (`TodaySummary.kt`, `glanceAt`). A hora atual avança a cada minuto com a tela
+  aberta. Teste: `TodayScreenTest`.
+- **Tarefas, "Pendentes".** Uma tarefa marcada como feita fica alguns segundos na lista, marcada, antes de sair
+  (`KEEP_JUST_DONE_MILLIS`): um toque por engano se desfaz ali mesmo. Teste: `TasksScreenTest`.
+- **Voltar no tablet.** Com o detalhe ou o formulário aberto ao lado da lista, o voltar do sistema fecha o painel,
+  em vez de sair da Rotina (`AreaListDetailLayout`). Teste: `RoutineScreenLayoutTest`.
+- **Gravação atrasada.** Uma gravação que termina depois de o formulário ter sido fechado pelo voltar e aberto de
+  novo não apaga nem fecha o formulário novo. Teste: `ActivityEditorViewModelTest`.
+- **Botão flutuante.** O espaço dele é medido (`ActionPillLayout`) e vale também para o estado vazio. Com o
+  formulário aberto ao lado da lista, o botão some: o formulário já é o jeito de adicionar.
+- **Formulário.** A semana dele tem o título "Dia da atividade" (a outra, ao lado, só escolhe o dia mostrado); o
+  horário vazio diz "Opcional, ex.: 08:30"; os dias da repetição têm três letras (Dom, Seg, Ter…), porque S e Q se
+  repetiam.
+- **Horário.** Aparece no formato do idioma e da escolha de 12/24 horas do aparelho (`rememberTimeFormat`); o
+  campo aceita "8:30", "08:30", "7h30" e "8:30 PM". O que é gravado continua `HH:mm`. Testes: `RoutineDomainTest`,
+  `AppDatesTest`.
+- **Calendário.** Abaixo da barrinha aparece o texto "Ver o mês inteiro" (ou "Voltar para a semana"), então o mês
+  se acha sem arrastar. Uma sexta semana toda do mês seguinte fica vazia, com a mesma altura. Teste:
+  `WeekSwipeAndRepeatTest`.
+- **Cartão da atividade.** O cartão inteiro abre a atividade, inclusive a faixa colorida; o círculo de concluir
+  continua respondendo ao próprio toque.
+
+## Cor das atividades (09/11/2026)
+
+A cor do cartão de uma atividade diz a parte do dia: manhã (das 5h às 12h) em amarelo, tarde (das 12h às 18h) em
+laranja, noite (das 18h às 5h) em lilás e sem horário em verde-menta (`dayPartOf`, em `RoutineTimeline.kt`). Antes,
+a cor vinha do id da atividade: era estável, mas parecia sorteada. Continua igual na Rotina e em Tarefas e em todos os
+dias de uma repetição. Testes: `DayPartTest` e `ConsistentLayoutTest`. Veja
+[design-system.md](../design-system.md#o-que-cada-cor-quer-dizer-09112026).
+
+## Todo mês no mesmo dia (09/11/2026)
+
+- **O que a pessoa vê:** em Repetir, o atalho "Todo mês neste dia". A frase diz "Todo mês no dia 15"; a partir do dia
+  29, "…, ou no último dia dos meses mais curtos".
+- **Como funciona:** `RepeatRule.MonthlyOnStartDay`, guardada como `monthly_day` (as regras do Firestore conferem o
+  texto). O dia vem da data de início; um dia que o mês não tem (31 em abril, 30 em fevereiro) cai no último dia
+  daquele mês, para nenhum mês ficar sem a atividade. Uma versão antiga do app lê o texto como desconhecido e não
+  repete, em vez de repetir errado.
+- **Testes:** `RepeatRuleTest` ("monthly keeps the day of the first one…") e `routine.test.mjs` (série com
+  `monthly_day`).

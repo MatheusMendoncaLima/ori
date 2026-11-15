@@ -7,6 +7,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.oriteam.ori.domain.aac.AacSymbol
 import com.oriteam.ori.domain.aac.AacViewer
+import com.oriteam.ori.ui.components.form.rememberFormOpening
 
 /**
  * Form to create ([existing] null) or edit a symbol. [editorKey] gives each form its own
@@ -24,7 +25,8 @@ fun SymbolEditorRoute(
     initialLabel: String = "",
     viewModel: SymbolEditorViewModel = hiltViewModel(key = editorKey)
 ) {
-    LaunchedEffect(editorKey) { viewModel.start(ownerUid, viewer, boardId, existing, initialLabel) }
+    val opening = rememberFormOpening()
+    LaunchedEffect(editorKey, opening) { viewModel.start(opening, ownerUid, viewer, boardId, existing, initialLabel) }
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
@@ -41,6 +43,8 @@ fun SymbolEditorRoute(
             onEmojiChange = viewModel::onEmojiChange,
             onPhotoPicked = viewModel::onPhotoPicked,
             onRemoveImage = viewModel::onRemoveImage,
+            onColorChange = viewModel::onColorChange,
+            onWordClassChange = viewModel::onWordClassChange,
             onSave = viewModel::onSaveClick,
             onDelete = onDelete,
             onClose = {

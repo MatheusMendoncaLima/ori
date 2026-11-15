@@ -128,7 +128,7 @@ describe("account preferences", () => {
     await assertSucceeds(setDoc(reference, { ...missingField, motion }));
   });
 
-  it("only one document exists, it cannot be listed or deleted", async () => {
+  it("only one document exists; it cannot be listed, and only its owner deletes it", async () => {
     const db = dbAs(PERSON);
     await assertFails(
       setDoc(doc(db, `users/${PERSON}/settings/other`), preferences()),
@@ -137,6 +137,6 @@ describe("account preferences", () => {
     await assertFails(
       getDocs(query(collection(db, `users/${PERSON}/settings`), limit(1))),
     );
-    await assertFails(deleteDoc(doc(db, DOCUMENT)));
+    await assertSucceeds(deleteDoc(doc(db, DOCUMENT)));
   });
 });

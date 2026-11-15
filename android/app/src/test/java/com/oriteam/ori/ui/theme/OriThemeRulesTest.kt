@@ -95,6 +95,87 @@ class OriThemeRulesTest {
         }
     }
 
+    @Test
+    fun `text on every soft color keeps the AA contrast, in both themes`() {
+        listOf(OriLightColorScheme to OriLightExtraColors, OriDarkColorScheme to OriDarkExtraColors)
+            .forEach { (scheme, extra) ->
+                softColors(extra).forEach { (name, accent) ->
+                    assertTrue("$name", contrast(scheme.onSurface, accent.container) >= AA_TEXT)
+                    assertTrue("$name", contrast(scheme.onSurfaceVariant, accent.container) >= AA_TEXT)
+                }
+            }
+    }
+
+    @Test
+    fun `the icon of a settings row stands out from its tile, in both themes`() {
+        listOf(OriLightColorScheme, OriDarkColorScheme).forEach { scheme ->
+            assertTrue(contrast(scheme.primary, scheme.primaryContainer) >= AA_GRAPHICS)
+        }
+    }
+
+    @Test
+    fun `inside the app the teal is the main color, readable in both themes`() {
+        assertReadable(OriLightAppColorScheme)
+        assertReadable(OriDarkAppColorScheme)
+        // The same teal as the selected tabs and the action pill, not a second main color.
+        assertEquals(OriLightExtraColors.strong, OriLightAppColorScheme.primary)
+        assertEquals(OriDarkExtraColors.strongOnSurface, OriDarkAppColorScheme.primary)
+    }
+
+    @Test
+    fun `a switch that is off can be seen, in both themes`() {
+        listOf(OriLightColorScheme, OriDarkColorScheme).forEach { scheme ->
+            listOf(scheme.background, scheme.surface).forEach { background ->
+                // The border and the thumb of an off switch (SettingsSwitchItem).
+                assertTrue(contrast(scheme.onSurfaceVariant, background) >= AA_GRAPHICS)
+            }
+        }
+    }
+
+    @Test
+    fun `the edge of a field, a choice or the done circle can be seen, in both themes`() {
+        listOf(OriLightColorScheme, OriDarkColorScheme).forEach { scheme ->
+            listOf(scheme.background, scheme.surface).forEach { background ->
+                // The light theme had a blue-gray of 1.5:1: a white field on the light background almost disappeared.
+                assertTrue(contrast(scheme.outline, background) >= AA_GRAPHICS)
+            }
+        }
+    }
+
+    @Test
+    fun `in the dark theme a soft color can be told from the card it sits on`() {
+        val card = OriDarkColorScheme.surface
+        softColors(OriDarkExtraColors).forEach { (name, accent) ->
+            // The first dark colors were almost the card's gray: the rows and symbols looked uncolored.
+            assertTrue("$name", distance(accent.container, card) >= MIN_VISIBLE_DISTANCE)
+        }
+    }
+
+    private fun softColors(extra: OriExtraColors): List<Pair<String, OriAccent>> =
+        extra.accents.mapIndexed { index, accent -> "area $index" to accent } + listOf(
+            "person" to extra.words.person,
+            "action" to extra.words.action,
+            "feeling" to extra.words.feeling,
+            "social" to extra.words.social,
+            "morning" to extra.dayParts.morning,
+            "afternoon" to extra.dayParts.afternoon,
+            "night" to extra.dayParts.night,
+            "any time" to extra.dayParts.anyTime,
+            "settings: accessibility" to extra.settings.accessibility,
+            "settings: theme" to extra.settings.theme,
+            "settings: communication" to extra.settings.communication,
+            "settings: screen" to extra.settings.screen,
+            "settings: privacy" to extra.settings.privacy,
+            "settings: about" to extra.settings.about
+        )
+
+    /** How far apart two colors are, channel by channel, from 0 to 765. */
+    private fun distance(first: Color, second: Color): Float =
+        (
+            kotlin.math.abs(first.red - second.red) + kotlin.math.abs(first.green - second.green) +
+                kotlin.math.abs(first.blue - second.blue)
+            ) * CHANNEL_MAX
+
     private fun assertReadable(scheme: ColorScheme) {
         listOf(
             "text on background" to (scheme.onBackground to scheme.background),
@@ -118,6 +199,9 @@ class OriThemeRulesTest {
 
     private companion object {
         const val AA_TEXT = 4.5f
+        const val AA_GRAPHICS = 3f
         const val LUMINANCE_OFFSET = 0.05f
+        const val CHANNEL_MAX = 255f
+        const val MIN_VISIBLE_DISTANCE = 40f
     }
 }

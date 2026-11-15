@@ -5,10 +5,10 @@ import com.oriteam.ori.R
 import com.oriteam.ori.domain.common.DataError
 import com.oriteam.ori.domain.common.DataResult
 import com.oriteam.ori.domain.common.WriteStatus
-import com.oriteam.ori.domain.model.TaskStatus
 import com.oriteam.ori.domain.routine.RepeatRule
 import com.oriteam.ori.domain.routine.RoutineTask
 import com.oriteam.ori.domain.routine.RoutineViewer
+import com.oriteam.ori.domain.routine.TaskStatus
 import com.oriteam.ori.testing.DAY
 import com.oriteam.ori.testing.FakeRoutineRepository
 import com.oriteam.ori.testing.MainDispatcherRule
@@ -18,6 +18,7 @@ import com.oriteam.ori.testing.manager
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -26,6 +27,9 @@ import org.junit.Rule
 import org.junit.Test
 import java.time.DayOfWeek
 import java.time.LocalTime
+
+private const val FIRST_OPENING = "opening-1"
+private const val NEXT_OPENING = "opening-2"
 
 class ActivityEditorViewModelTest {
 
@@ -38,7 +42,7 @@ class ActivityEditorViewModelTest {
         viewer: RoutineViewer = RoutineViewer.Owner,
         savedState: SavedStateHandle = SavedStateHandle(),
         existing: RoutineTask? = null
-    ) = ActivityEditorViewModel(routines, savedState).apply { start(OWNER, viewer, existing, DAY) }
+    ) = ActivityEditorViewModel(routines, savedState).apply { start(FIRST_OPENING, OWNER, viewer, existing, DAY) }
 
     @Test
     fun `creating saves the typed activity with a reserved id and reports success`() = runTest {
@@ -201,5 +205,54 @@ class ActivityEditorViewModelTest {
 
         assertEquals("", next.uiState.value.titleInput)
         assertEquals(true, next.uiState.value.isNew)
+    }
+
+    @Test
+    fun `a form left with the system back opens again empty, on the day chosen now`() = runTest {
+        // The ViewModel outlives the form: the same one is used when the form opens again.
+        val viewModel = editor()
+        viewModel.onTitleChange("Rascunho")
+        viewModel.onTimeChange("09:00")
+
+        // "Back" closed the form without Cancelar; it opens again, now on another day.
+        val otherDay = DAY.plusDays(2)
+        viewModel.start(NEXT_OPENING, OWNER, RoutineViewer.Owner, existing = null, defaultDate = otherDay)
+
+        assertEquals("", viewModel.uiState.value.titleInput)
+        assertEquals("", viewModel.uiState.value.timeInput)
+        assertEquals(otherDay, viewModel.uiState.value.date)
+    }
+
+    @Test
+    fun `a save that ends after the form was left and opened again leaves the new form alone`() = runTest {
+        val slowNetwork = CompletableDeferred<Unit>()
+        routines.writeGate = slowNetwork
+        val viewModel = editor()
+        viewModel.onTitleChange("Primeira")
+        viewModel.onSaveClick()
+
+        // "Back" while it saves, and the form opens again: the person starts typing another activity.
+        viewModel.start(NEXT_OPENING, OWNER, RoutineViewer.Owner, existing = null, defaultDate = DAY)
+        viewModel.onTitleChange("Segunda")
+        slowNetwork.complete(Unit)
+
+        assertEquals("Primeira", routines.writes.single().draft?.title)
+        assertEquals("Segunda", viewModel.uiState.value.titleInput)
+        // No "saved" reaches the new form, which would close it.
+        assertNull(withTimeoutOrNull(1) { viewModel.events.first() })
+    }
+
+    @Test
+    fun `editing again shows what is saved, not the changes left with the system back`() = runTest {
+        val existing = activity("own", title = "Ler", createdBy = OWNER)
+        routines.dayResult = DataResult.Success(listOf(existing))
+        val viewModel = editor(existing = existing)
+        viewModel.onTitleChange("Ler muito")
+
+        viewModel.start(NEXT_OPENING, OWNER, RoutineViewer.Owner, existing, DAY)
+        assertEquals("Ler", viewModel.uiState.value.titleInput)
+        viewModel.onSaveClick()
+
+        assertEquals("Ler", routines.writes.single().draft?.title)
     }
 }

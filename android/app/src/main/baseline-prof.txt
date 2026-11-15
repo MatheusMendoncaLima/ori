@@ -1,0 +1,5 @@
+# Baseline profile: the code listed here is compiled ahead of time when the app is installed, instead of
+# being interpreted the first times it runs. Compose and the other libraries bring their own profiles.
+# ORI's own code is small and every screen of it composes on the main thread, so all of it is listed.
+HSPLcom/oriteam/ori/**->**(**)**
+Lcom/oriteam/ori/**;

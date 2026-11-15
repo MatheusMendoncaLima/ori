@@ -13,6 +13,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.LocalTime
 
 /** Only a successful load may tell the person that the day has no activities. */
 @RunWith(AndroidJUnit4::class)
@@ -22,20 +23,29 @@ class TodayScreenTest {
 
     private val noActivities get() = composeRule.activity.getString(R.string.today_empty)
     private var retries = 0
+    private var routineOpenings = 0
 
     private fun render(state: ContentState<List<RoutineStepUiModel>>) {
         composeRule.setContent {
             OriTheme {
                 TodayScreen(
-                    name = "Ana",
+                    firstName = "Ana",
                     steps = state,
+                    now = LocalTime.of(10, 0),
                     onRetry = { retries++ },
-                    onOpenRoutine = {},
+                    onOpenRoutine = { routineOpenings++ },
                     onOpenCommunication = {},
                     onOpenSubscreen = {}
                 )
             }
         }
+    }
+
+    @Test
+    fun `the greeting says the first name`() {
+        render(ContentState.Empty)
+
+        composeRule.onNodeWithText("Olá, Ana!").assertExists()
     }
 
     @Test
@@ -57,16 +67,34 @@ class TodayScreenTest {
     }
 
     @Test
-    fun `an empty day says so`() {
+    fun `an empty day says so and leads to the routine`() {
         render(ContentState.Empty)
 
         composeRule.onNodeWithText(noActivities).assertExists()
+        composeRule.onNodeWithText("Toque para planejar o dia em \"Rotina\".").performClick()
+        assertEquals(1, routineOpenings)
     }
 
     @Test
     fun `a day with activities shows the next one`() {
-        render(ContentState.Content(listOf(RoutineStepUiModel("1", "Terapia", "14:00"))))
+        render(ContentState.Content(listOf(RoutineStepUiModel("1", "Terapia", LocalTime.of(14, 0)))))
 
         composeRule.onNodeWithText("14:00 · Terapia").assertExists()
+    }
+
+    @Test
+    fun `an activity whose time has passed is not the next one, it is counted apart`() {
+        render(
+            ContentState.Content(
+                listOf(
+                    RoutineStepUiModel("1", "Café", LocalTime.of(8, 0)),
+                    RoutineStepUiModel("2", "Terapia", LocalTime.of(14, 0))
+                )
+            )
+        )
+
+        composeRule.onNodeWithText("14:00 · Terapia").assertExists()
+        composeRule.onNodeWithText("08:00 · Café").assertDoesNotExist()
+        composeRule.onNodeWithText("1 atividade de mais cedo ainda não foi feita").assertExists()
     }
 }

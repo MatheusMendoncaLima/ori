@@ -24,11 +24,12 @@ import com.oriteam.ori.domain.routine.RoutineTask
 import com.oriteam.ori.domain.routine.RoutineViewer
 import com.oriteam.ori.ui.adaptive.CenteredContent
 import com.oriteam.ori.ui.adaptive.FillOrScrollColumn
+import com.oriteam.ori.ui.components.form.FormActionBar
 import com.oriteam.ori.ui.components.form.FormMessage
 import com.oriteam.ori.ui.components.form.FormMessageType
 import com.oriteam.ori.ui.components.form.LabeledTextField
-import com.oriteam.ori.ui.components.form.LoadingButton
-import com.oriteam.ori.ui.components.form.OriTextButton
+import com.oriteam.ori.ui.components.form.rememberFormOpening
+import com.oriteam.ori.ui.components.list.SectionHeader
 import com.oriteam.ori.ui.components.navigation.OriTopBar
 import com.oriteam.ori.ui.components.settings.SettingsSwitchItem
 import com.oriteam.ori.ui.theme.OriDimensions
@@ -51,7 +52,8 @@ fun ActivityEditorRoute(
     onClose: () -> Unit,
     viewModel: ActivityEditorViewModel = hiltViewModel(key = editorKey)
 ) {
-    LaunchedEffect(editorKey) { viewModel.start(ownerUid, viewer, existing, defaultDate) }
+    val opening = rememberFormOpening()
+    LaunchedEffect(editorKey, opening) { viewModel.start(opening, ownerUid, viewer, existing, defaultDate) }
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
@@ -100,11 +102,14 @@ fun ActivityEditorScreen(
             .windowInsetsPadding(WindowInsets.ime)
     ) {
         OriTopBar(
+            maxWidth = OriDimensions.FormMaxWidth,
             title = stringResource(if (state.isNew) R.string.activity_new_title else R.string.activity_edit_title),
             onNavigateBack = onClose
         )
         FillOrScrollColumn(modifier = Modifier.weight(1f)) {
             CenteredContent(maxWidth = OriDimensions.FormMaxWidth) {
+                // Named, because beside the list there is another calendar, which only chooses the day shown.
+                SectionHeader(text = stringResource(R.string.activity_day_label))
                 WeekStrip(date = date, today = today, onSelectDate = onDateChange)
                 Spacer(modifier = Modifier.height(OriSpacing.Medium))
                 LabeledTextField(
@@ -152,14 +157,13 @@ fun ActivityEditorScreen(
                 }
                 FormMessage(messageRes = state.errorMessageRes, type = FormMessageType.ERROR)
                 Spacer(modifier = Modifier.height(OriSpacing.Large))
-                LoadingButton(
-                    text = stringResource(R.string.activity_save),
-                    isLoading = state.isSaving,
-                    onClick = onSave
-                )
-                OriTextButton(text = stringResource(R.string.action_cancel), onClick = onClose)
-                Spacer(modifier = Modifier.height(OriSpacing.Huge))
             }
         }
+        FormActionBar(
+            saveLabel = stringResource(R.string.activity_save),
+            isSaving = state.isSaving,
+            onSave = onSave,
+            onCancel = onClose
+        )
     }
 }

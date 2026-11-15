@@ -61,7 +61,7 @@ testadas com JUnit puro, sem emulador.
 | `domain/session` | `SessionState` e `sessionStateFor()`: combina identidade e perfil |
 | `domain/profile`, `domain/routine`, `domain/aac`, `domain/carelink`, `domain/preferences` | Modelos e contratos de perfil, rotina, comunicação (pranchas, mensagem, voz), vínculos e convites (com `CareLinkSide`, o lado do vínculo que cada tela mostra), e preferências de exibição e de comunicação |
 | `domain/photos` | Fotos escolhidas pela pessoa, para símbolos e para o perfil: `PhotoStore`, `StoredPhoto`, erros de importação e `CloudPhotoRepository` (a cópia na conta) |
-| `domain/common` | `DataResult` e `DataError`, usados por todos os repositórios de dados, e `AppLocale`, o idioma do app num lugar só |
+| `domain/common` | `DataResult` e `DataError`, usados por todos os repositórios de dados, e `AppLocale.kt`: o idioma padrão, os idiomas traduzidos e a escolha do idioma das datas e da voz (veja [idiomas.md](idiomas.md)) |
 | `domain/model` | `TaskStatus` (deveria estar em `domain/routine`: ver G1 em [revisao-de-codigo.md](revisao-de-codigo.md)) |
 | `domain/local` | `LocalDataStore` e `MoveLocalDataToAccount`: dados sem conta e a passagem deles para a conta |
 | `domain/reports` | Cálculo dos relatórios ([funcionalidades/relatorios.md](funcionalidades/relatorios.md)) |
@@ -145,7 +145,9 @@ O Hilt é usado onde ele reduz acoplamento:
 
 ## Navegação
 
-A raiz do app é o `OriApp`, que mostra uma área diferente para cada `SessionState`:
+A raiz do app é o `OriApp`, que mostra uma área diferente para cada `SessionState`. Em volta dele (e da tela
+inicial do ORI Home) fica `OriDialogHost`, onde os diálogos são desenhados, na mesma janela: veja
+[design-system.md](design-system.md) ("Diálogos").
 
 - **Deslogado:** pager da Home, descrito abaixo.
 - **Sem perfil:** "Complete seu perfil".
@@ -180,6 +182,7 @@ troca a área inteira.
 | `android/` | `./gradlew testDevDebugUnitTest` | Testes de domínio, ViewModels e testes de UI Compose na JVM (Robolectric) |
 | `android/` | `./gradlew lintProdDebug` | Android Lint |
 | `android/` | `./gradlew assembleDevDebug assembleProdDebug` | Build dos APKs (`dev` usa o emulador do Firebase; `prod`, o projeto real) |
+| `android/` | `./gradlew assembleProdProfiling` | O release com R8 e perfis de baseline, assinado com a chave de depuração: o build para medir a fluidez num aparelho |
 | `web/` | `npm run format:check`, `npm run lint`, `npm run build` | Prettier, ESLint, build |
 | `functions/functions/` | `npm run lint`, `npm run build` | ESLint (estilo Google), TypeScript |
 | `functions/security-tests/` | `npm run format:check`, `npm test` | Prettier; regras do Firestore e Cloud Functions no emulador (precisa de Java) |

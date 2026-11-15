@@ -40,7 +40,13 @@ sealed interface AacSelection {
 data class AacCommunicateUiState(
     val boards: ContentState<List<BoardTabUiModel>> = ContentState.Loading,
     val selection: AacSelection? = null,
+    /** The board "Montar" shows, also while "Prontas" is open (the last one used); null without boards. */
+    val buildBoard: AacSelection.Board? = null,
     val symbols: ContentState<List<AacSymbolUiModel>> = ContentState.Loading,
+    /** The board [symbols] belong to. */
+    val symbolsKey: String? = null,
+    /** The language of that board (a language tag), which colors its words; null is the app's. */
+    val boardLanguage: String? = null,
     val savedMessages: ContentState<List<SavedMessage>> = ContentState.Loading,
     val message: List<AacSymbolUiModel> = emptyList(),
     val canSaveMessage: Boolean = false,
@@ -49,8 +55,12 @@ data class AacCommunicateUiState(
     val speechState: SpeechState = SpeechState.PREPARING,
     /** Text shown in large letters (on request, or because there is no voice). */
     val displayedText: String? = null,
+    /** The last text was said with the volume at zero: nobody heard it, and the screen warns. */
+    val isVolumeOff: Boolean = false,
     val isCreatingStarterBoard: Boolean = false,
     val pendingDeletion: SavedMessage? = null,
+    /** The saved phrase whose picture is being chosen. */
+    val pendingEmojiChange: SavedMessage? = null,
     @StringRes val actionErrorRes: Int? = null,
     @StringRes val noticeRes: Int? = null
 )

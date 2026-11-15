@@ -13,18 +13,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.oriteam.ori.ui.components.text.Text
-import com.oriteam.ori.ui.theme.LocalOriColors
 import com.oriteam.ori.ui.theme.OriDimensions
 import com.oriteam.ori.ui.theme.OriSpacing
 
 /** The floating "+ Nova tarefa" button of the wireframes: the main action of a list. */
 @Composable
 fun OriActionPill(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val colors = LocalOriColors.current
     Button(
         onClick = onClick,
         shape = CircleShape,
-        colors = ButtonDefaults.buttonColors(containerColor = colors.strong, contentColor = colors.onStrong),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        ),
         modifier = modifier.heightIn(min = OriDimensions.ControlMinHeight)
     ) {
         Icon(imageVector = Icons.Filled.Add, contentDescription = null)

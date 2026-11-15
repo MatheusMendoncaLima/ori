@@ -20,6 +20,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.oriteam.ori.R
 import com.oriteam.ori.ui.app.screens.auth.AuthFormScaffold
+import com.oriteam.ori.ui.app.screens.auth.GoogleSignInSection
 import com.oriteam.ori.ui.components.form.BrandHeader
 import com.oriteam.ori.ui.components.form.FormMessage
 import com.oriteam.ori.ui.components.form.FormMessageType
@@ -119,6 +120,10 @@ fun LoginScreen(
             isLoading = state.isLoading,
             onClick = onLoginClick
         )
+
+        Spacer(modifier = Modifier.height(OriSpacing.Small))
+
+        GoogleSignInSection()
 
         Spacer(modifier = Modifier.height(OriSpacing.Small))
 

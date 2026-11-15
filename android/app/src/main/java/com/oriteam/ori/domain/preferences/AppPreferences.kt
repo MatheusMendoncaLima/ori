@@ -38,7 +38,9 @@ data class DevicePreferences(
     val listPresentation: ListPresentation = ListPresentation.DETAILED,
     val startArea: StartArea = StartArea.HOME,
     /** Needed before anyone signs in (the "Aa" button on the login screen), so it stays here. */
-    val isUppercase: Boolean = false
+    val isUppercase: Boolean = false,
+    /** The opening animation of the logo plays once per device, on the first launch. */
+    val hasSeenIntro: Boolean = false
 )
 
 /** Everything the root of the app applies. */

@@ -47,7 +47,7 @@ class UppercaseEverywhereTest {
                 ) {
                     androidx.compose.foundation.layout.Column {
                         OriTopBar(title = "Minha rotina")
-                        OriMenuRow(title = "Configurações", icon = Icons.Filled.Home, accentIndex = 0, onClick = {})
+                        OriMenuRow(title = "Configurações", icon = Icons.Filled.Home, accent = null, onClick = {})
                         OriListItem(headline = "Dados pessoais")
                     }
                 }

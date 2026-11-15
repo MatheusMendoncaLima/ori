@@ -3,15 +3,15 @@ package com.oriteam.ori.ui.app.screens.routine
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import com.oriteam.ori.R
-import com.oriteam.ori.domain.model.TaskStatus
 import com.oriteam.ori.domain.routine.RepeatRule
 import com.oriteam.ori.domain.routine.RoutineTask
 import com.oriteam.ori.domain.routine.RoutineViewer
+import com.oriteam.ori.domain.routine.TaskStatus
 import com.oriteam.ori.domain.routine.canDeleteActivity
 import com.oriteam.ori.domain.routine.canEditActivity
 import com.oriteam.ori.domain.routine.canToggleCompletion
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
+import java.time.LocalTime
 
 /** Completion shown to the person. Each value carries its spoken and visible label. */
 enum class ActivityProgress(@StringRes val labelRes: Int) {
@@ -35,7 +35,8 @@ enum class ActivityBadge(@StringRes val labelRes: Int) {
 data class RoutineStepUiModel(
     val id: String,
     val title: String,
-    val timeLabel: String? = null,
+    /** Written by the screen, in the format of the language and of the device's 12/24-hour choice. */
+    val time: LocalTime? = null,
     val isDone: Boolean = false,
     val isCurrent: Boolean = false,
     /** False when the viewer may not mark this activity; the toggle is then read-only. */
@@ -52,13 +53,11 @@ data class RoutineStepUiModel(
     val progress: ActivityProgress get() = ActivityProgress.of(isDone)
 }
 
-private val timeLabelFormat = DateTimeFormatter.ofPattern("HH:mm")
-
 /** What a card shows of an activity, and what [viewer] may do with it. */
 internal fun RoutineTask.toUiModel(viewer: RoutineViewer) = RoutineStepUiModel(
     id = id,
     title = title,
-    timeLabel = scheduledTime?.format(timeLabelFormat),
+    time = scheduledTime,
     isDone = isDone,
     canToggle = canToggleCompletion(this, viewer),
     description = description,

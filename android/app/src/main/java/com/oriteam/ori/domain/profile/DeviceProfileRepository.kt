@@ -18,4 +18,7 @@ interface DeviceProfileRepository {
     suspend fun clearLocalProfile()
 
     suspend fun saveAccountProfileCopy(profile: UserProfile)
+
+    /** Forgets the copy of the account's profile: leaving the account leaves nothing of it in this file. */
+    suspend fun clearAccountProfileCopy()
 }

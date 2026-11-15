@@ -3,25 +3,24 @@ package com.oriteam.ori.data.routine
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.MetadataChanges
 import com.google.firebase.firestore.Query
 import com.oriteam.ori.data.firestore.FirestoreSchema
 import com.oriteam.ori.data.firestore.awaitWriteAcknowledgement
-import com.oriteam.ori.data.firestore.dataErrorFor
+import com.oriteam.ori.data.firestore.mapList
+import com.oriteam.ori.data.firestore.observeList
 import com.oriteam.ori.data.firestore.runDataOperation
 import com.oriteam.ori.domain.common.DataError
 import com.oriteam.ori.domain.common.DataResult
 import com.oriteam.ori.domain.common.WriteStatus
-import com.oriteam.ori.domain.model.TaskStatus
 import com.oriteam.ori.domain.routine.ActivityDraft
 import com.oriteam.ori.domain.routine.MAX_ROUTINE_TASKS
 import com.oriteam.ori.domain.routine.RoutineRepository
 import com.oriteam.ori.domain.routine.RoutineSnapshot
 import com.oriteam.ori.domain.routine.RoutineTask
 import com.oriteam.ori.domain.routine.RoutineViewer
-import kotlinx.coroutines.channels.awaitClose
+import com.oriteam.ori.domain.routine.TaskStatus
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 import javax.inject.Inject
@@ -34,9 +33,7 @@ class FirestoreRoutineRepository @Inject constructor(
     private val firebaseAuth: FirebaseAuth
 ) : RoutineRepository {
 
-    private fun activitiesOf(ownerUid: String) = firestore.collection(FirestoreSchema.USERS)
-        .document(ownerUid)
-        .collection(FirestoreSchema.ROUTINE_TASKS)
+    private fun activitiesOf(ownerUid: String) = firestore.routineTasksOf(ownerUid)
 
     /**
      * One day, limited. Owner: every activity of the day. Caregiver: only active ones, because the
@@ -59,31 +56,10 @@ class FirestoreRoutineRepository @Inject constructor(
         ownerUid: String,
         viewer: RoutineViewer,
         date: LocalDate
-    ): Flow<DataResult<RoutineSnapshot>> = callbackFlow {
-        // Metadata changes (cache -> server, pending -> confirmed) do not cost document reads.
-        val registration = dayQuery(ownerUid, viewer, date)
-            .addSnapshotListener(MetadataChanges.INCLUDE) { snapshot, exception ->
-                val result = if (exception != null || snapshot == null) {
-                    DataResult.Failure(exception?.let(::dataErrorFor) ?: DataError.UNKNOWN)
-                } else {
-                    DataResult.Success(
-                        RoutineSnapshot(
-                            tasks = snapshot.documents.mapNotNull {
-                                routineTaskFrom(
-                                    it.id,
-                                    ownerUid,
-                                    it.data.orEmpty()
-                                )
-                            },
-                            isFromCache = snapshot.metadata.isFromCache,
-                            hasPendingWrites = snapshot.metadata.hasPendingWrites()
-                        )
-                    )
-                }
-                trySend(result)
-            }
-        awaitClose { registration.remove() }
-    }
+    ): Flow<DataResult<RoutineSnapshot>> =
+        dayQuery(ownerUid, viewer, date)
+            .observeList { routineTaskFrom(it.id, ownerUid, it.data.orEmpty()) }
+            .map { result -> result.mapList { RoutineSnapshot(it.items, it.isFromCache, it.hasPendingWrites) } }
 
     override suspend fun getDay(
         ownerUid: String,

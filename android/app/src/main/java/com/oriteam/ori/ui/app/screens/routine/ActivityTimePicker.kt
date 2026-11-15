@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -23,6 +22,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import com.oriteam.ori.R
 import com.oriteam.ori.domain.routine.TimeInput
 import com.oriteam.ori.domain.routine.parseScheduledTime
+import com.oriteam.ori.ui.components.dialog.OriAlertDialog
 import com.oriteam.ori.ui.components.form.LabeledTextField
 import com.oriteam.ori.ui.components.form.OriSecondaryButton
 import com.oriteam.ori.ui.components.text.Text
@@ -82,8 +82,10 @@ private fun TimePickerDialog(initial: LocalTime?, onPick: (LocalTime) -> Unit, o
         initialMinute = initial?.minute ?: 0,
         is24Hour = true
     )
-    AlertDialog(
+    OriAlertDialog(
         onDismissRequest = onDismiss,
+        title = null,
+        paneTitle = stringResource(R.string.activity_time_label),
         confirmButton = {
             TextButton(onClick = { onPick(LocalTime.of(state.hour, state.minute)) }) {
                 Text(text = stringResource(R.string.activity_time_pick_confirm))

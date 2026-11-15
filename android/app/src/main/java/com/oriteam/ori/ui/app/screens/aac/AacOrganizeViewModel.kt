@@ -7,6 +7,9 @@ import com.oriteam.ori.domain.aac.AacBoard
 import com.oriteam.ori.domain.aac.AacBoardRepository
 import com.oriteam.ori.domain.aac.AacSymbol
 import com.oriteam.ori.domain.aac.AacViewer
+import com.oriteam.ori.domain.aac.MAX_SYMBOLS_PER_BOARD
+import com.oriteam.ori.domain.aac.StarterVocabulary
+import com.oriteam.ori.domain.aac.SymbolDraft
 import com.oriteam.ori.domain.aac.SymbolImage
 import com.oriteam.ori.domain.aac.boardOrder
 import com.oriteam.ori.domain.aac.canManageBoards
@@ -17,7 +20,9 @@ import com.oriteam.ori.domain.aac.positionChanges
 import com.oriteam.ori.domain.aac.symbolOrder
 import com.oriteam.ori.domain.aac.validateBoardName
 import com.oriteam.ori.domain.common.DataResult
+import com.oriteam.ori.domain.common.ListSnapshot
 import com.oriteam.ori.domain.common.WriteStatus
+import com.oriteam.ori.domain.common.appLanguageTag
 import com.oriteam.ori.domain.photos.PhotoStore
 import com.oriteam.ori.domain.photos.StoredPhoto
 import com.oriteam.ori.ui.app.screens.common.messageRes
@@ -29,6 +34,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -41,6 +47,12 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 private const val STOP_TIMEOUT_MILLIS = 5_000L
+
+/** The symbols of the open board as shown, and the words of the suggested board it lacks (see [StarterVocabulary]). */
+private data class BoardSymbols(
+    val listed: Listed<AacSymbol, AacSymbolUiModel> = Listed(),
+    val missing: List<SymbolDraft> = emptyList()
+)
 private const val BOARD_KEY = "organizer_board"
 
 /**
@@ -53,58 +65,77 @@ private const val BOARD_KEY = "organizer_board"
 class AacOrganizeViewModel @Inject constructor(
     private val boardRepository: AacBoardRepository,
     private val photoStore: PhotoStore,
-    private val savedStateHandle: SavedStateHandle
+    private val savedStateHandle: SavedStateHandle,
+    private val starterVocabulary: StarterVocabulary
 ) : ViewModel() {
 
     private data class Request(val ownerUid: String, val viewer: AacViewer, val attempt: Int = 0)
 
     private val request = MutableStateFlow<Request?>(null)
+
+    /** Read again each time the screen opens: the suggested board is shown in the app's language. */
+    private val appLanguage = MutableStateFlow(appLanguageTag)
     private val selectedBoardId = MutableStateFlow(savedStateHandle.get<String>(BOARD_KEY))
     private val interaction = MutableStateFlow(AacOrganizeUiState())
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val boards: StateFlow<Listed<AacBoard, BoardTabUiModel>> = request.filterNotNull()
         .flatMapLatest { current ->
-            boardRepository.observeBoards(current.ownerUid)
-                .map { result -> listed(result, boardOrder) { BoardTabUiModel(it.id, it.name) } }
+            combine(boardRepository.observeBoards(current.ownerUid), appLanguage, ::boardsIn)
                 .onStart { emit(Listed()) }
                 .withLastingSyncNotice(notice = { it.noticeRes }, withoutNotice = { it.copy(noticeRes = null) })
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), Listed())
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val symbols: StateFlow<Listed<AacSymbol, AacSymbolUiModel>> =
+    private val symbols: StateFlow<BoardSymbols> =
         combine(request.filterNotNull(), selectedBoardId, ::Pair).flatMapLatest { (current, id) ->
             if (id == null) {
-                flowOf(Listed(rows = ContentState.Empty))
+                flowOf(BoardSymbols(Listed(rows = ContentState.Empty)))
             } else {
-                boardRepository.observeSymbols(current.ownerUid, id)
-                    .transformLatest { result ->
-                        emit(listed(result, symbolOrder) { it.toUiModel(photoStore) })
-                        // Photos added on another device arrive after the names, which never wait for them.
-                        val photos = (result as? DataResult.Success)?.value?.items?.let(::photosOf).orEmpty()
-                        if (photoStore.fetchMissing(current.ownerUid, photos)) {
-                            emit(listed(result, symbolOrder) { it.toUiModel(photoStore) })
-                        }
+                val read = boardRepository.observeSymbols(current.ownerUid, id).transformLatest { result ->
+                    emit(result)
+                    // Photos added on another device arrive after the names, which never wait for them.
+                    val photos = (result as? DataResult.Success)?.value?.items?.let(::photosOf).orEmpty()
+                    if (photoStore.fetchMissing(current.ownerUid, photos)) emit(result)
+                }
+                val board = boards.map { list -> list.items.firstOrNull { it.id == id } }.distinctUntilChanged()
+                combine(read, board, appLanguage) { result, chosen, language ->
+                    val shown = { list: List<AacSymbol> ->
+                        chosen?.let { starterVocabulary.symbolsIn(it, list, language).symbols } ?: list
                     }
-                    .onStart { emit(Listed()) }
+                    // The missing words are found among the symbols as stored, in the board's own language.
+                    val stored = (result as? DataResult.Success)?.value?.items.orEmpty()
+                    BoardSymbols(
+                        listed = listed(result, symbolOrder, shown) { it.toUiModel(photoStore) },
+                        missing = chosen?.let { starterVocabulary.missingFrom(it, stored) }.orEmpty()
+                    )
+                }.onStart { emit(BoardSymbols()) }
             }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), Listed())
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), BoardSymbols())
+
+    /** The boards as shown, the suggested one named in the app's [language]. */
+    private fun boardsIn(result: DataResult<ListSnapshot<AacBoard>>, language: String) =
+        listed(result, boardOrder, shown = { list -> list.map { starterVocabulary.boardIn(it, language) } }) {
+            BoardTabUiModel(it.id, it.name)
+        }
 
     private val latestBoards: List<AacBoard> get() = boards.value.items
-    private val latestSymbols: List<AacSymbol> get() = symbols.value.items
+    private val latestSymbols: List<AacSymbol> get() = symbols.value.listed.items
 
     val uiState: StateFlow<AacOrganizeUiState> =
         combine(boards, symbols, selectedBoardId, interaction) { boardList, symbolList, boardId, local ->
             local.copy(
                 boards = boardList.rows,
-                symbols = symbolList.rows,
+                symbols = symbolList.listed.rows,
+                suggestedWordsToAdd = symbolList.missing.size,
                 selectedBoardId = boardId,
                 syncNoticeRes = boardList.noticeRes
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), AacOrganizeUiState())
 
     fun show(ownerUid: String, viewer: AacViewer) {
+        appLanguage.value = appLanguageTag
         val current = request.value
         if (current?.ownerUid == ownerUid && current.viewer == viewer) return
         interaction.update { it.copy(canManage = canManageBoards(viewer), canUsePhotos = canUseDevicePhotos(viewer)) }
@@ -134,6 +165,31 @@ class AacOrganizeViewModel @Inject constructor(
         runWrite { boardRepository.reorderSymbols(current.ownerUid, boardId, changes) }
     }
 
+    /**
+     * Completes a suggested board made when it had fewer words: the words it lacks go to its end, as the app makes
+     * them, so they also follow the app's language. One write each, so it works offline; a second tap meanwhile
+     * does nothing, and a board never passes [MAX_SYMBOLS_PER_BOARD].
+     */
+    fun onAddSuggestedWords() {
+        val current = managingRequest() ?: return
+        val boardId = selectedBoardId.value ?: return
+        if (interaction.value.isAddingSuggestedWords) return
+        val drafts = symbols.value.missing.take((MAX_SYMBOLS_PER_BOARD - latestSymbols.size).coerceAtLeast(0))
+        if (drafts.isEmpty()) return
+        val first = nextPosition(latestSymbols.map { it.position })
+        interaction.update { it.copy(isAddingSuggestedWords = true, actionErrorRes = null) }
+        viewModelScope.launch {
+            val failure = drafts.withIndex().firstNotNullOfOrNull { (index, draft) ->
+                val symbolId = boardRepository.newSymbolId(current.ownerUid, boardId)
+                boardRepository.createSymbol(current.ownerUid, boardId, symbolId, draft, first + index)
+                    as? DataResult.Failure
+            }
+            interaction.update {
+                it.copy(isAddingSuggestedWords = false, actionErrorRes = failure?.error?.messageRes())
+            }
+        }
+    }
+
     fun onCreateBoardRequest() = interaction.update { it.copy(boardDialog = BoardNameDialog(boardId = null)) }
 
     fun onRenameBoardRequest(boardId: String) {
@@ -157,7 +213,13 @@ class AacOrganizeViewModel @Inject constructor(
         interaction.update { it.copy(boardDialog = dialog.copy(isSaving = true)) }
         viewModelScope.launch {
             val result = if (dialog.boardId == null) {
-                boardRepository.createBoard(current.ownerUid, name, nextPosition(latestBoards.map { it.position }))
+                boardRepository.createBoard(
+                    current.ownerUid,
+                    name,
+                    nextPosition(latestBoards.map { it.position }),
+                    // A new board is written in the app's language: its voice and grammar follow it from now on.
+                    appLanguageTag
+                )
             } else {
                 boardRepository.renameBoard(current.ownerUid, dialog.boardId, name)
             }

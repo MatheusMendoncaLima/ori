@@ -7,6 +7,8 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
+import com.oriteam.ori.ui.components.motion.OriPaneTransition
 
 /**
  * The sub-screen an area has open on top of itself, the same way in every area: one at a time, kept
@@ -37,3 +39,20 @@ fun <T : Any> rememberOpenSubscreen(vararg keys: Any?): OpenSubscreen<T> {
     BackHandler(enabled = subscreen.current != null) { subscreen.close() }
     return subscreen
 }
+
+/**
+ * Shows the area itself ([content] with null) or its open sub-screen. Opening moves forward and closing
+ * moves back, as every step in and out of something in the app.
+ */
+@Composable
+fun <T : Any> SubscreenHost(
+    subscreen: OpenSubscreen<T>,
+    modifier: Modifier = Modifier,
+    content: @Composable (T?) -> Unit
+) = OriPaneTransition(
+    target = subscreen.current,
+    isForward = { _, to -> to != null },
+    modifier = modifier,
+    label = "Subscreen",
+    content = content
+)

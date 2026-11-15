@@ -1,8 +1,11 @@
 package com.oriteam.ori.ui.components.list
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -16,15 +19,19 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.oriteam.ori.ui.components.motion.pressScale
 import com.oriteam.ori.ui.components.text.Text
 import com.oriteam.ori.ui.theme.LocalOriAppearance
 import com.oriteam.ori.ui.theme.OriSpacing
@@ -59,6 +66,8 @@ fun OriListItem(
     }
 }
 
+private const val SELECTION_MILLIS = 200
+
 /**
  * What every row of the app is drawn on, in lists and in menus: the surface, light border and corners
  * of [com.oriteam.ori.ui.components.card.OriCard]. Simplified screens drop the border, as cards do.
@@ -74,13 +83,30 @@ internal fun OriRow(
     val appearance = LocalOriAppearance.current
     val shape = MaterialTheme.shapes.large
     val border = if (appearance.showsDecoration) Modifier.border(1.dp, colors.outlineVariant, shape) else Modifier
-    val clickModifier = if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier
+    val interaction = remember { MutableInteractionSource() }
+    val clickModifier = if (onClick != null) {
+        Modifier.clickable(
+            interactionSource = interaction,
+            indication = LocalIndication.current,
+            role = Role.Button,
+            onClick = onClick
+        )
+    } else {
+        Modifier
+    }
+    // The selected row of a list-detail layout changes color smoothly, as the choice moves.
+    val background = animateColorAsState(
+        targetValue = if (isSelected) colors.secondaryContainer else colors.surface,
+        animationSpec = appearance.motion.feedback(SELECTION_MILLIS),
+        label = "RowBackground"
+    )
     Row(
         modifier = modifier
+            .then(if (onClick != null) Modifier.pressScale(interaction) else Modifier)
             .fillMaxWidth()
             .heightIn(min = appearance.metrics.listItemMinHeight)
             .clip(shape)
-            .background(if (isSelected) colors.secondaryContainer else colors.surface)
+            .drawBehind { drawRect(background.value) }
             .then(border)
             .then(clickModifier)
             .semantics { selected = isSelected }

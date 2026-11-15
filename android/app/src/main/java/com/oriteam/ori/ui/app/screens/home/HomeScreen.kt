@@ -41,6 +41,7 @@ fun HomeRoute(
     HomeScreen(
         state = state,
         onTimerFinished = viewModel::onTimerFinished,
+        onIntroFinished = viewModel::onIntroFinished,
         onContinueWithoutAccount = onContinueWithoutAccount
     )
 }
@@ -55,6 +56,7 @@ fun HomeRoute(
 fun HomeScreen(
     state: HomeUiState = HomeUiState(),
     onTimerFinished: () -> Unit = {},
+    onIntroFinished: () -> Unit = {},
     onContinueWithoutAccount: () -> Unit = {}
 ) {
     val pages = HomePage.entries
@@ -85,7 +87,9 @@ fun HomeScreen(
             when (pages[pageIndex]) {
                 HomePage.ONBOARDING -> OnboardingPage(
                     showOptions = state.showOptions,
+                    playsIntro = state.playsIntro,
                     onTimerFinished = onTimerFinished,
+                    onIntroFinished = onIntroFinished,
                     onSignIn = { goTo(HomePage.LOGIN) },
                     onCreateAccount = { goTo(HomePage.REGISTER) },
                     onContinueWithoutAccount = onContinueWithoutAccount

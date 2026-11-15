@@ -6,113 +6,180 @@ package com.oriteam.ori.domain.aac
  */
 data class SentencePiece(val text: String, val connector: String? = null)
 
-private enum class Person { FIRST, THIRD, PLURAL }
+/**
+ * The kind of a word, for the colors of a board: people, actions, feelings, and answers and courtesy ("sim", "não",
+ * "por favor"). Only words the grammar knows have one.
+ */
+enum class WordClass { PERSON, ACTION, FEELING, SOCIAL, OTHER }
 
-private enum class Complement { NONE, OF, OF_UNLESS_VERB, WITH_FOR_STATES }
+/** Who a verb agrees with. Each language says which word is which: "você" is THIRD, "you" and "tú" are SECOND. */
+internal enum class Person { FIRST, SECOND, THIRD, FIRST_PLURAL, THIRD_PLURAL }
 
-private class Verb(val first: String, val third: String, val plural: String, val complement: Complement) {
-    fun formFor(person: Person) = when (person) {
-        Person.FIRST -> first
-        Person.THIRD -> third
-        Person.PLURAL -> plural
-    }
+/** What a word is to the verb before it, which decides what the verb asks for ("de", "com", "to"…). */
+internal enum class WordKind { THING, ACTION, STATE, QUALITY }
 
-    val forms = setOf(first, third, plural)
+/** A verb of a table: its form for each person, and the word it asks for before each kind of word. */
+internal class Verb(
+    private val forms: Map<Person, String>,
+    private val connectors: Map<WordKind, String> = emptyMap()
+) {
+    val allForms: Set<String> = forms.values.toSet()
+
+    fun formFor(person: Person): String? = forms[person]
+
+    fun connectorBefore(kind: WordKind): String? = connectors[kind]
 }
 
-private val verbs = listOf(
-    Verb("quero", "quer", "queremos", Complement.NONE),
-    Verb("preciso", "precisa", "precisamos", Complement.OF_UNLESS_VERB),
-    Verb("gosto", "gosta", "gostamos", Complement.OF),
-    Verb("estou", "está", "estamos", Complement.WITH_FOR_STATES),
-    Verb("tenho", "tem", "temos", Complement.NONE)
-)
+/**
+ * The tables of one language. They hold only what is certain: a word outside them stays as tapped, and the
+ * order never changes. A table grows more safely than rules that try to guess ("ends in -ar" would make "lugar"
+ * a verb). [states] are nouns of how one feels ("dor", "pain"); [qualities], adjectives of it ("hungry");
+ * [actions], verbs in the infinitive ("go", "comer"). All three are painted on the boards.
+ *
+ * [missingVerbs] is the verb a state or a quality takes when the person tapped none: "eu" + "fome" says
+ * "eu estou com fome", "I" + "hungry" says "I am hungry". It goes after the negation ("eu não estou com fome"),
+ * or before it when [verbBeforeNegation] ("I am not hungry").
+ *
+ * [articles] are the nouns that take one after a verb, with it: "I need the bathroom", "necesito el baño". Only
+ * nouns one counts; "I want water" takes none. [social] are answers and courtesy ("sim", "não", "por favor"), which
+ * only get their color.
+ */
+internal open class GrammarTables(
+    val verbs: List<Verb>,
+    val subjects: Map<String, Person>,
+    val linkingWords: Set<String>,
+    val negation: String,
+    val states: Set<String> = emptySet(),
+    val qualities: Set<String> = emptySet(),
+    val actions: Set<String> = emptySet(),
+    val missingVerbs: Map<WordKind, Verb> = emptyMap(),
+    val verbBeforeNegation: Boolean = false,
+    val articles: Map<String, String> = emptyMap(),
+    val social: Set<String> = emptySet()
+) {
+    /** Whether a word is an action to the verb before it. Portuguese also knows its infinitives by their ending. */
+    open fun isAction(key: String) = key in actions
 
-private val subjects = mapOf(
-    "eu" to Person.FIRST,
-    "você" to Person.THIRD,
-    "ele" to Person.THIRD,
-    "ela" to Person.THIRD,
-    "ele/ela" to Person.THIRD,
-    "a gente" to Person.THIRD,
-    "nós" to Person.PLURAL
-)
+    fun verbOf(key: String) = verbs.firstOrNull { key in it.allForms }
 
-/** What one is "com": "estou com dor", but "estou feliz" stays as it is. */
-private val states = setOf("dor", "sono", "fome", "frio", "calor", "sede", "medo", "febre", "pressa", "raiva")
+    /** The kind of a word to the verb before it; null for a word that takes nothing ("de", "não", a verb). */
+    fun kindOf(key: String): WordKind? = when {
+        key in linkingWords || verbOf(key) != null -> null
+        isAction(key) -> WordKind.ACTION
+        key in states -> WordKind.STATE
+        key in qualities -> WordKind.QUALITY
+        else -> WordKind.THING
+    }
 
-/** A word that already links two others, or that does not take a complement. */
-private val linkingWords = setOf("de", "do", "da", "com", "para", "a", "ao", "à", "em", "no", "na", "que", "não", "e")
+    /**
+     * The same, when the person said what the word is ([WordClass] chosen in the symbol form): an action, how one
+     * feels (an adjective, unless the tables know it as a noun: "dor"), or a person or thing.
+     */
+    fun kindOf(key: String, chosen: WordClass?): WordKind? = when (chosen) {
+        WordClass.ACTION -> WordKind.ACTION
+        WordClass.FEELING -> if (key in states) WordKind.STATE else WordKind.QUALITY
+        WordClass.PERSON, WordClass.OTHER -> kindOf(key)?.let { WordKind.THING }
+        WordClass.SOCIAL, null -> kindOf(key)
+    }
 
-private val infinitiveEnding = Regex("(ar|er|ir)$")
-
-/** Ways of saying two neighboring words that Portuguese always joins or changes. */
-private val contractions = mapOf(
-    "de ele" to "dele",
-    "de ela" to "dela",
-    "de eu" to "de mim",
-    "com eu" to "comigo",
-    "com nós" to "conosco"
-)
-
-private fun String.key() = trim().lowercase()
-
-private fun verbOf(key: String) = verbs.firstOrNull { key in it.forms }
+    fun classOf(word: String): WordClass {
+        val key = word.grammarKey()
+        return when {
+            key in subjects -> WordClass.PERSON
+            verbOf(key) != null || key in actions -> WordClass.ACTION
+            key in states || key in qualities -> WordClass.FEELING
+            key in social -> WordClass.SOCIAL
+            else -> WordClass.OTHER
+        }
+    }
+}
 
 /**
- * Turns tapped words into a sentence that reads right, so a person who cannot build the grammar is
- * still understood: "eu" + "gosto" + "você" says "eu gosto de você". It only adds what is certain:
- * words it does not know stay as tapped, and the order is never changed. Only the verbs and states
- * of a first vocabulary are known; a table grows more safely than rules that try to guess.
+ * One tapped word as the tables read it, for the rules of a single language that come after [read]. [isPerson]: a
+ * subject of the tables ("eu", "mom") or a word the person marked as a person (a name).
  */
-fun composeSentence(words: List<String>): List<SentencePiece> {
+internal data class Reading(
+    val key: String,
+    val verb: Verb?,
+    val person: Person?,
+    val isAfterVerb: Boolean,
+    val isPerson: Boolean = false
+)
+
+/**
+ * Turns tapped words into pieces that read right, so a person who cannot build the grammar is still understood:
+ * the verb agrees with whoever comes before it ("você" + "quero" says "quer") and brings the word it asks for
+ * ("gosto" + "você" says "gosto de você"). A pronoun after a verb is not its subject, and a negation between the
+ * verb and the next word keeps them connected ("não gosto de banho"). A subject followed by how one feels, with
+ * no verb, gets the verb it is missing ("eu fome" says "eu estou com fome").
+ */
+internal fun GrammarTables.read(
+    words: List<String>,
+    classes: List<WordClass?> = emptyList()
+): List<Pair<Reading, SentencePiece>> {
+    val read = mutableListOf<Pair<Reading, SentencePiece>>()
     var person: Person? = null
     var previousVerb: Verb? = null
-    return words.map { word ->
-        val key = word.key()
+    words.forEachIndexed { index, word ->
+        val key = word.grammarKey()
+        val chosen = classes.getOrNull(index)
         val verb = verbOf(key)
-        val connector = previousVerb?.connectorBefore(key)
-        if (previousVerb == null && verb == null) subjects[key]?.let { person = it }
-        val text = verb?.takeIf { person != null }?.formFor(person!!) ?: word
-        previousVerb = verb ?: previousVerb?.takeIf { key == "não" }
-        SentencePiece(text = text, connector = connector)
+        val kind = kindOf(key, chosen)
+        // A name the person marked as a person agrees as "he" or "she" does: "Ana quer água".
+        val subject = subjects[key] ?: Person.THIRD.takeIf { chosen == WordClass.PERSON }
+        val seenVerb = read.any { it.first.verb != null }
+        val connector = if (previousVerb != null) {
+            val article = articles[key]?.takeIf { kind == WordKind.THING }
+            listOfNotNull(kind?.let(previousVerb::connectorBefore), article).joinToString(" ").ifEmpty { null }
+        } else {
+            kind?.takeIf { verb == null && !seenVerb }?.let { missingVerbBefore(it, person, read) }
+        }
+        if (previousVerb == null && verb == null) subject?.let { person = it }
+        val text = verb?.let { person?.let(it::formFor) } ?: word
+        val reading = Reading(key, verb, person, isAfterVerb = seenVerb, isPerson = subject != null)
+        read += reading to SentencePiece(text = text, connector = connector)
+        previousVerb = verb ?: previousVerb?.takeIf { key == negation }
     }
+    return read
 }
-
-private fun Verb.connectorBefore(key: String): String? {
-    if (key in linkingWords || verbOf(key) != null) return null
-    return when (complement) {
-        Complement.NONE -> null
-        Complement.OF -> "de"
-        Complement.OF_UNLESS_VERB -> "de".takeUnless { infinitiveEnding.containsMatchIn(key) }
-        Complement.WITH_FOR_STATES -> "com".takeIf { key in states }
-    }
-}
-
-/** The kind of a word, for the colors of a board. Only words the grammar knows have one. */
-enum class WordClass { PERSON, ACTION, FEELING, OTHER }
 
 /**
- * Like the color keys used in communication boards (people, actions, feelings), but only for the words
- * of the tables above: a guess, such as "ends in -ar", would paint "lugar" as an action.
+ * The verb [kind] takes when the subject came right before it, alone or with the negation: what goes before the
+ * word, such as "estou com" in "eu estou com fome". Where the verb goes before the negation ("I am not hungry"),
+ * the negation's piece receives it, and the word keeps only what the verb asks for ("in" in "I am not in pain").
  */
-fun wordClassOf(word: String): WordClass {
-    val key = word.key()
-    return when {
-        key in subjects -> WordClass.PERSON
-        verbOf(key) != null -> WordClass.ACTION
-        key in states -> WordClass.FEELING
-        else -> WordClass.OTHER
+private fun GrammarTables.missingVerbBefore(
+    kind: WordKind,
+    person: Person?,
+    read: MutableList<Pair<Reading, SentencePiece>>
+): String? {
+    val verb = missingVerbs[kind]
+    val last = read.lastOrNull()?.first
+    val isNegated = last?.key == negation
+    val subject = if (isNegated) read.getOrNull(read.lastIndex - 1)?.first else last
+    val asked = verb?.connectorBefore(kind)
+    val form = person?.let { verb?.formFor(it) }?.takeIf { subject != null && subject.isPerson }
+    return form?.let {
+        if (isNegated && verbBeforeNegation) {
+            val (negationReading, negationPiece) = read.last()
+            read[read.lastIndex] = negationReading to negationPiece.copy(connector = form)
+            asked
+        } else {
+            listOfNotNull(form, asked).joinToString(" ")
+        }
     }
 }
 
-/** The sentence to say, with the contractions the words on the screen do not show. */
-fun List<SentencePiece>.toSpokenSentence(): String {
-    val words = flatMap { listOfNotNull(it.connector, it.text) }
+/** The sentence to say, with the [contractions] of two neighboring words that the screen does not show. */
+internal fun List<SentencePiece>.spoken(contractions: Map<String, String> = emptyMap()): String {
     val joined = mutableListOf<String>()
-    words.forEach { word ->
-        val contraction = joined.lastOrNull()?.let { contractions["${it.key()} ${word.key()}"] }
+    // A connector may hold two words ("a el" in "voy a el baño"); each one meets its neighbor ("al").
+    flatMap { it.connector?.split(" ").orEmpty() + it.text }.forEach { word ->
+        val contraction = joined.lastOrNull()?.let { contractions["${it.grammarKey()} ${word.grammarKey()}"] }
         if (contraction != null) joined[joined.lastIndex] = contraction else joined += word
     }
     return joined.joinToString(" ").replaceFirstChar { it.uppercase() }
 }
+
+/** Old boards have "Dor" and "Eu": the tables compare words in lowercase, without spaces around them. */
+internal fun String.grammarKey() = trim().lowercase()

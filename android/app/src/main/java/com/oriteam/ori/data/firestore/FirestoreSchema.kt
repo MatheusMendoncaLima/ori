@@ -3,8 +3,8 @@ package com.oriteam.ori.data.firestore
 import com.oriteam.ori.domain.carelink.CareLink
 import com.oriteam.ori.domain.carelink.CareLinkPermissions
 import com.oriteam.ori.domain.carelink.CareLinkStatus
-import com.oriteam.ori.domain.model.TaskStatus
 import com.oriteam.ori.domain.profile.UserProfile
+import com.oriteam.ori.domain.routine.TaskStatus
 
 /**
  * Names and values stored in Firestore. They are a persisted contract shared with
@@ -51,6 +51,21 @@ internal object FirestoreSchema {
     const val PHRASE = "phrase"
     const val IMAGE = "image"
     const val TEXT = "text"
+    const val LANGUAGE = "language"
+    const val EMOJI = "emoji"
+    const val COLOR = "color"
+    const val WORD_CLASS = "wordClass"
+
+    // users/{uid}/legal/consent: the record of the consent (see ConsentStore).
+    const val LEGAL = "legal"
+    const val CONSENT_DOCUMENT = "consent"
+    const val VERSION = "version"
+    const val IS_ADULT = "isAdult"
+    const val GUARDIAN_CONSENT = "guardianConsent"
+    const val ACCEPTED_AT = "acceptedAt"
+
+    /** Set on the profile while the account is being deleted (see FirestoreAccountDeletion). */
+    const val DELETING_AT = "deletingAt"
 
     /** A symbol image is stored as a short reference with a type prefix, never as image bytes. */
     const val EMOJI_IMAGE_PREFIX = "emoji:"

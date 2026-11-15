@@ -162,3 +162,20 @@ Em **Conta → Sair da conta**, o app chama `signOut()`. A sessão passa a
 
 - O cache offline do Firestore não é apagado ao sair (ver [perfis-e-permissoes.md](perfis-e-permissoes.md#7-limitações-e-riscos)).
 - Não há testes com o Firebase Auth Emulator nem testes de ponta a ponta das telas.
+
+## Entrar com o Google (09/11/2026)
+
+- **O que a pessoa vê:** em Entrar e em Cadastrar, abaixo do formulário, "ou" e "Continuar com o Google". O Android
+  mostra as contas Google do aparelho; a pessoa escolhe uma e entra. Na primeira vez a conta é criada com o nome do
+  Google e segue para "Complete seu perfil", como uma conta de e-mail.
+- **Como funciona:** `GoogleSignInSection` pede a conta ao Credential Manager do Android (`GetSignInWithGoogleOption`
+  com o `default_web_client_id` que o plugin do Google gera do `google-services.json`) e entrega o token a
+  `GoogleSignInViewModel`, que chama `AuthRepository.signInWithGoogle` (`GoogleAuthProvider` no Firebase). A sessão
+  muda sozinha; o app nunca vê senha.
+- **Erros:** fechar a lista de contas não é erro; sem conta Google no aparelho, a tela explica; falhas do Firebase usam
+  as mesmas mensagens do login por e-mail. Só o tipo do erro vai para o log.
+- **Configuração:** o provedor Google ligado no Firebase Authentication e a impressão SHA-1 do certificado cadastrada
+  no app `com.oriteam.ori` (feito em 09/11/2026 para o certificado de depuração; para publicar, falta o certificado
+  de publicação). O build `dev` usa o projeto de emulador `demo-ori`, sem Google: lá o botão não aparece.
+- **Testes:** `GoogleSignInViewModelTest` (entra, fechar a lista não é erro, sem conta e falha explicadas). O pedido
+  ao Android só roda no aparelho.

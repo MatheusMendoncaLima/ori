@@ -5,8 +5,11 @@ import com.oriteam.ori.data.firestore.FirestoreSchema
 import com.oriteam.ori.domain.aac.AacBoard
 import com.oriteam.ori.domain.aac.AacSymbol
 import com.oriteam.ori.domain.aac.SavedMessage
+import com.oriteam.ori.domain.aac.SymbolColor
 import com.oriteam.ori.domain.aac.SymbolDraft
 import com.oriteam.ori.domain.aac.SymbolImage
+import com.oriteam.ori.domain.aac.storedKey
+import com.oriteam.ori.domain.aac.wordClassFromKey
 
 /** "emoji:💧" or "device:3f2a….jpg". Unknown prefixes read as "no image" rather than failing. */
 internal fun SymbolImage.toStoredImage(): String = when (this) {
@@ -36,7 +39,8 @@ internal fun aacBoardFrom(id: String, data: Map<String, Any?>): AacBoard? {
         id = id,
         name = name,
         position = positionFrom(data[FirestoreSchema.POSITION]),
-        createdBy = createdBy
+        createdBy = createdBy,
+        language = data[FirestoreSchema.LANGUAGE] as? String
     )
 }
 
@@ -50,13 +54,21 @@ internal fun aacSymbolFrom(id: String, boardId: String, data: Map<String, Any?>)
         phrase = data[FirestoreSchema.PHRASE] as? String,
         image = symbolImageFrom(data[FirestoreSchema.IMAGE]),
         position = positionFrom(data[FirestoreSchema.POSITION]),
-        createdBy = createdBy
+        createdBy = createdBy,
+        color = SymbolColor.fromKey(data[FirestoreSchema.COLOR] as? String),
+        wordClass = wordClassFromKey(data[FirestoreSchema.WORD_CLASS] as? String)
     )
 }
 
 internal fun savedMessageFrom(id: String, data: Map<String, Any?>): SavedMessage? {
     val text = data[FirestoreSchema.TEXT] as? String ?: return null
-    return SavedMessage(id = id, text = text)
+    return SavedMessage(
+        id = id,
+        text = text,
+        language = data[FirestoreSchema.LANGUAGE] as? String,
+        emoji = data[FirestoreSchema.EMOJI] as? String,
+        position = (data[FirestoreSchema.POSITION] as? Number)?.toInt()
+    )
 }
 
 /** Fields that an edit may change. Authorship, creation time and position stay as they are. */
@@ -64,6 +76,8 @@ internal fun SymbolDraft.toEditableFields(): Map<String, Any?> = mapOf(
     FirestoreSchema.LABEL to label,
     FirestoreSchema.PHRASE to phrase,
     FirestoreSchema.IMAGE to image?.toStoredImage(),
+    FirestoreSchema.COLOR to color?.key,
+    FirestoreSchema.WORD_CLASS to wordClass?.storedKey,
     FirestoreSchema.UPDATED_AT to FieldValue.serverTimestamp()
 )
 
@@ -74,8 +88,14 @@ internal fun SymbolDraft.toNewDocument(createdBy: String, position: Int): Map<St
         FirestoreSchema.CREATED_AT to FieldValue.serverTimestamp()
     )
 
-internal fun newBoardDocument(name: String, position: Int, createdBy: String): Map<String, Any?> = mapOf(
+internal fun newBoardDocument(
+    name: String,
+    position: Int,
+    createdBy: String,
+    language: String
+): Map<String, Any?> = mapOf(
     FirestoreSchema.NAME to name,
+    FirestoreSchema.LANGUAGE to language,
     FirestoreSchema.POSITION to position,
     FirestoreSchema.CREATED_BY to createdBy,
     FirestoreSchema.CREATED_AT to FieldValue.serverTimestamp(),

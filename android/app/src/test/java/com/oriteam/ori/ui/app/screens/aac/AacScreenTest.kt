@@ -1,17 +1,26 @@
 package com.oriteam.ori.ui.app.screens.aac
 
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.height
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.oriteam.ori.domain.aac.SpeechState
 import com.oriteam.ori.domain.preferences.AacPreferences
@@ -37,6 +46,9 @@ class AacScreenTest {
     }
     private val removed = mutableListOf<Int>()
     private val tapped = mutableListOf<String>()
+    private val selected = mutableListOf<AacSelection>()
+    private var volumeRaised = 0
+    private var volumeWarningClosed = 0
 
     private fun boardState(
         preferences: AacPreferences = AacPreferences(),
@@ -45,6 +57,7 @@ class AacScreenTest {
     ) = AacCommunicateUiState(
         boards = ContentState.Content(listOf(BoardTabUiModel("b1", "Básico"))),
         selection = AacSelection.Board("b1"),
+        buildBoard = AacSelection.Board("b1"),
         symbols = ContentState.Content(symbols),
         message = message,
         preferences = preferences,
@@ -53,16 +66,18 @@ class AacScreenTest {
 
     private val actions = AacCommunicateActions(
         message = AacMessageBarActions.None.copy(onRemovePart = { removed += it }),
-        onSelect = {},
+        onSelect = { selected += it },
         onShowBoards = {},
         onSymbolTap = { tapped += it },
-        onSayPhrase = {},
+        onSayPhrase = { _, _ -> },
         onDeleteSavedRequest = {},
         onCreateStarterBoard = {},
         onRetry = {},
         onDismissDisplay = {},
         onDeleteSavedConfirm = {},
-        onDeleteSavedDismiss = {}
+        onDeleteSavedDismiss = {},
+        onRaiseVolume = { volumeRaised++ },
+        onDismissVolumeWarning = { volumeWarningClosed++ }
     )
 
     private fun render(state: AacCommunicateUiState, widthDp: Int = 400, heightDp: Int = 900, fontScale: Float = 1f) {
@@ -76,6 +91,26 @@ class AacScreenTest {
     private fun rowOf(label: String) = composeRule.onNodeWithText(label).bounds.top
 
     @Test
+    fun `Montar is made ahead while Prontas is open, out of reach, and shown at once`() {
+        var state by mutableStateOf(
+            boardState().copy(selection = AacSelection.SavedMessages, savedMessages = ContentState.Content(emptyList()))
+        )
+        composeRule.setContent {
+            OriTestWindow(widthDp = 400, heightDp = 900) { AacCommunicateScreen(state = state, actions = actions) }
+        }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Estou com dor").assertIsDisplayed()
+        composeRule.onNodeWithText("Água").assertDoesNotExist()
+
+        state = boardState()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Água").assertIsDisplayed().performClick()
+        assertEquals(listOf("Água"), tapped)
+        composeRule.onNodeWithText("Estou com dor").assertDoesNotExist()
+    }
+
+    @Test
     fun `each symbol is one button that says its label and what a tap does`() {
         render(boardState())
 
@@ -85,6 +120,25 @@ class AacScreenTest {
             .performClick()
 
         assertEquals(listOf("Água"), tapped)
+    }
+
+    @Test
+    fun `a voice nobody heard shows the warning, with buttons to turn the volume up or close it`() {
+        render(boardState().copy(isVolumeOff = true), widthDp = 360)
+
+        composeRule.onNodeWithText("O volume está no zero: ninguém ouviu a voz.").assertIsDisplayed()
+        composeRule.onNodeWithText("Aumentar o volume").assert(hasClickAction()).performClick()
+        composeRule.onNodeWithText("Fechar").assert(hasClickAction()).performClick()
+
+        assertEquals(1, volumeRaised)
+        assertEquals(1, volumeWarningClosed)
+    }
+
+    @Test
+    fun `without the warning of volume there is nothing about it on the screen`() {
+        render(boardState())
+
+        composeRule.onNodeWithText("Aumentar o volume").assertDoesNotExist()
     }
 
     @Test
@@ -139,6 +193,87 @@ class AacScreenTest {
     }
 
     @Test
+    fun `Mudar prancha in the Mais menu lists the boards and opens the one chosen`() {
+        val boards = listOf(BoardTabUiModel("b1", "Básico"), BoardTabUiModel("b2", "Comida"))
+        render(boardState().copy(boards = ContentState.Content(boards)))
+
+        composeRule.onNodeWithContentDescription("Mais ações da mensagem").performClick()
+        composeRule.onNodeWithText("Mudar prancha").performClick()
+        composeRule.onNodeWithText("Escolha uma prancha").assertIsDisplayed()
+        composeRule.onNode(hasText("Básico") and isRadio).assertIsSelected()
+        composeRule.onNode(hasText("Comida") and isRadio).performClick()
+
+        assertEquals(listOf<AacSelection>(AacSelection.Board("b2")), selected)
+        composeRule.onNodeWithText("Escolha uma prancha").assertDoesNotExist()
+    }
+
+    @Test
+    fun `without boards there is no board to change to`() {
+        render(boardState().copy(boards = ContentState.Empty, selection = null, buildBoard = null))
+
+        composeRule.onNodeWithContentDescription("Mais ações da mensagem").performClick()
+        composeRule.onNodeWithText("Mudar prancha").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a word without a picture is as tall as one with a picture, and so is Nova palavra`() {
+        val words = listOf(
+            AacSymbolUiModel(id = "1", label = "água", image = SymbolImageUi.Emoji("🥛")),
+            AacSymbolUiModel(id = "2", label = "com", image = null)
+        )
+        composeRule.setContent {
+            OriTestWindow(widthDp = 360, heightDp = 800) {
+                AacBoardGrid(
+                    symbols = words,
+                    preferences = AacPreferences(),
+                    onSymbolClick = {},
+                    onClickLabel = "",
+                    onAddSymbol = {}
+                )
+            }
+        }
+
+        // Each tile is one button, so its text is found on the tile itself.
+        val withPicture = composeRule.onNodeWithText("água").bounds.height
+        assertEquals(withPicture, composeRule.onNodeWithText("com").bounds.height)
+        assertEquals(withPicture, composeRule.onNodeWithText("Nova palavra").bounds.height)
+    }
+
+    @Test
+    fun `screen readers move a symbol with actions, only where it can go, and only when moving is on`() {
+        val words = listOf(
+            AacSymbolUiModel(id = "1", label = "água", image = SymbolImageUi.Emoji("🥛")),
+            AacSymbolUiModel(id = "2", label = "com", image = null)
+        )
+        val moves = mutableListOf<Pair<String, Int>>()
+        var canMove by mutableStateOf(true)
+        composeRule.setContent {
+            OriTestWindow(widthDp = 360, heightDp = 800) {
+                AacBoardGrid(
+                    symbols = words,
+                    preferences = AacPreferences(),
+                    onSymbolClick = {},
+                    onClickLabel = "",
+                    onMoveSymbol = { id: String, to: Int -> moves += id to to }.takeIf { canMove }
+                )
+            }
+        }
+        fun actionsOf(label: String) =
+            composeRule.onNodeWithText(label).fetchSemanticsNode().config.getOrNull(SemanticsActions.CustomActions)
+
+        assertEquals(listOf("Mover água para depois"), actionsOf("água")?.map { it.label })
+        assertEquals(listOf("Mover com para antes"), actionsOf("com")?.map { it.label })
+        actionsOf("com")!!.single().action()
+        assertEquals(listOf("2" to 0), moves)
+
+        canMove = false
+        composeRule.waitForIdle()
+        assertEquals(null, actionsOf("água")?.takeIf { it.isNotEmpty() })
+    }
+
+    private val isRadio = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton)
+
+    @Test
     fun `without boards the person can still type, or choose how to start`() {
         render(AacCommunicateUiState(boards = ContentState.Empty, selection = null, symbols = ContentState.Empty))
 
@@ -173,6 +308,34 @@ class AacScreenTest {
     }
 
     @Test
+    fun `an older suggested board offers the words it lacks, and only then`() {
+        var added = 0
+        var state by mutableStateOf(
+            AacOrganizeUiState(canManage = true, symbols = ContentState.Empty, suggestedWordsToAdd = 16)
+        )
+        composeRule.setContent {
+            OriTestWindow(widthDp = 400, heightDp = 800) {
+                SymbolsPane(
+                    state = state,
+                    onNavigateBack = null,
+                    onEditSymbol = {},
+                    onAddSymbol = {},
+                    onMoveSymbol = { _, _ -> },
+                    onRenameBoard = {},
+                    onDeleteBoard = {},
+                    onRetry = {},
+                    onAddSuggestedWords = { added++ }
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Acrescentar as 16 palavras sugeridas que faltam").performClick()
+        assertEquals(1, added)
+        state = state.copy(suggestedWordsToAdd = 0)
+        composeRule.onNodeWithText("Acrescentar as 16 palavras sugeridas que faltam").assertDoesNotExist()
+    }
+
+    @Test
     fun `move buttons name the item they move`() {
         val rows = listOf(OrganizerItemUiModel(BoardTabUiModel("b1", "Básico"), false, true))
         composeRule.setContent {
@@ -191,5 +354,45 @@ class AacScreenTest {
 
         composeRule.onNode(hasContentDescription("Mover Básico para depois")).assertIsDisplayed()
         composeRule.onNodeWithText("Nova prancha").assertIsDisplayed()
+    }
+
+    private fun renderSymbolsPane(canManage: Boolean, onRename: () -> Unit = {}, onDelete: () -> Unit = {}) {
+        composeRule.setContent {
+            OriTestWindow(widthDp = 360, heightDp = 640) {
+                SymbolsPane(
+                    state = AacOrganizeUiState(canManage = canManage, symbols = ContentState.Empty),
+                    onNavigateBack = null,
+                    onEditSymbol = {},
+                    onAddSymbol = {},
+                    onMoveSymbol = { _, _ -> },
+                    onRenameBoard = onRename,
+                    onDeleteBoard = onDelete,
+                    onRetry = {}
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `renaming and deleting a board wait in the menu of the title bar`() {
+        var renamed = 0
+        var deleted = 0
+        renderSymbolsPane(canManage = true, onRename = { renamed++ }, onDelete = { deleted++ })
+
+        composeRule.onNodeWithText("Renomear prancha").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("Mais opções da prancha").performClick()
+        composeRule.onNodeWithText("Renomear prancha").performClick()
+        composeRule.onNodeWithContentDescription("Mais opções da prancha").performClick()
+        composeRule.onNodeWithText("Excluir prancha").performClick()
+
+        assertEquals(1, renamed)
+        assertEquals(1, deleted)
+    }
+
+    @Test
+    fun `who cannot manage a board has no menu to rename or delete it`() {
+        renderSymbolsPane(canManage = false)
+
+        composeRule.onNodeWithContentDescription("Mais opções da prancha").assertDoesNotExist()
     }
 }

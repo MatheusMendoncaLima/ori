@@ -6,6 +6,7 @@ import com.oriteam.ori.data.firestore.DocumentState
 import com.oriteam.ori.data.firestore.FirestoreSchema
 import com.oriteam.ori.data.firestore.awaitWriteAcknowledgement
 import com.oriteam.ori.data.firestore.dataErrorFor
+import com.oriteam.ori.data.firestore.firestoreListenerExecutor
 import com.oriteam.ori.data.firestore.profileLookups
 import com.oriteam.ori.data.firestore.runDataOperation
 import com.oriteam.ori.domain.common.DataResult
@@ -26,7 +27,7 @@ class FirestoreProfileRepository @Inject constructor(
     override fun observeProfile(uid: String): Flow<ProfileLookup> {
         val states = callbackFlow {
             val registration = firestore.collection(FirestoreSchema.USERS).document(uid)
-                .addSnapshotListener { snapshot, exception ->
+                .addSnapshotListener(firestoreListenerExecutor) { snapshot, exception ->
                     val state = when {
                         exception != null -> DocumentState(
                             exists = false,

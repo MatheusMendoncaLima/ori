@@ -2,7 +2,9 @@ package com.oriteam.ori.ui.app.screens.routine
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -19,6 +21,7 @@ import com.oriteam.ori.R
 import com.oriteam.ori.domain.routine.DeleteScope
 import com.oriteam.ori.domain.routine.RoutineViewer
 import com.oriteam.ori.ui.adaptive.AreaListDetailLayout
+import com.oriteam.ori.ui.components.dialog.OriAlertDialog
 import com.oriteam.ori.ui.components.dialog.OriConfirmationDialog
 import com.oriteam.ori.ui.components.state.ContentState
 import com.oriteam.ori.ui.components.state.EmptyState
@@ -29,9 +32,9 @@ import com.oriteam.ori.ui.components.text.Text
 @Composable
 private fun RepeatingDeleteDialog(title: String, onDelete: (DeleteScope) -> Unit, onDismiss: () -> Unit) {
     val destructive = MaterialTheme.colorScheme.error
-    AlertDialog(
+    OriAlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = title, style = MaterialTheme.typography.headlineSmall) },
+        title = title,
         text = {
             Text(
                 text = stringResource(R.string.activity_delete_repeating_message),
@@ -87,7 +90,8 @@ internal fun RoutinePane.afterSave(saved: ActivityEditorViewModel.Event.Saved): 
 
 /**
  * Routine of [ownerUid] for one day, as seen by [viewer]. The layout depends on the space this
- * area receives, so it also adapts inside the caregiver's detail pane.
+ * area receives, so it also adapts inside the caregiver's detail pane. [topBarActions] go at the end of the title row
+ * of the list (the panel of ORI Home puts "Abrir no ORI" there, so it has one bar, not two).
  */
 @Composable
 fun RoutineRoute(
@@ -95,6 +99,7 @@ fun RoutineRoute(
     viewer: RoutineViewer,
     title: String,
     onNavigateBack: (() -> Unit)? = null,
+    topBarActions: @Composable () -> Unit = {},
     viewModel: RoutineViewModel = hiltViewModel(key = "routine-$ownerUid")
 ) {
     LaunchedEffect(ownerUid, viewer) { viewModel.show(ownerUid, viewer) }
@@ -109,16 +114,25 @@ fun RoutineRoute(
             title = title,
             selectedId = (pane as? RoutinePane.Details)?.id,
             emptyMessage = stringResource(
-                if (viewer == RoutineViewer.Owner) R.string.routine_empty_owner else R.string.routine_empty_caregiver
+                if (viewer == RoutineViewer.Owner) R.string.routine_empty_owner else R.string.routine_empty_caregiver,
+                stringResource(R.string.activity_add)
             ),
             onNavigateBack = onNavigateBack,
-            onSelectDate = viewModel::onSelectDate,
+            topBarActions = topBarActions,
+            onSelectDate = { date ->
+                // Another day has other activities: the open details would say this one "may have been deleted".
+                // Saving on another day changes the day too, but through the form, which opens the details itself.
+                if (date != state.date && pane is RoutinePane.Details) paneKey = null
+                viewModel.onSelectDate(date)
+            },
             onMonthShown = viewModel::onMonthShown,
             onToggleDone = viewModel::onToggleDone,
             onOpen = { paneKey = RoutinePane.Details(it).key },
             onCreate = { paneKey = RoutinePane.New.key },
             onRetry = viewModel::onRetry,
-            modifier = listModifier
+            modifier = listModifier,
+            // The form open beside the list is already the way to add.
+            showsAddButton = pane !is RoutinePane.New && pane !is RoutinePane.Edit
         )
     }
     val paneContent: @Composable (RoutinePane, (() -> Unit)?) -> Unit = { current, onBack ->
@@ -133,9 +147,11 @@ fun RoutineRoute(
                         onDelete = { viewModel.onDeleteRequest(step.id) },
                         onNavigateBack = onBack
                     )
-                    // An activity saved on another day opens with that day, which may still be loading.
-                    state.content == ContentState.Loading -> LoadingState()
+                    // An activity saved on another day opens with that day, which may still be loading
+                    // (or still showing the previous day for a moment).
+                    state.content == ContentState.Loading || state.contentDate != state.date -> LoadingState()
                     else -> EmptyState(
+                        icon = Icons.Filled.Search,
                         title = stringResource(R.string.activity_not_found_title),
                         message = stringResource(R.string.activity_not_found_message)
                     )
@@ -159,12 +175,13 @@ fun RoutineRoute(
     }
 
     AreaListDetailLayout(
-        hasDetail = pane != null,
+        selection = pane,
         onBack = { paneKey = null },
         list = list,
-        detail = { onBack -> pane?.let { paneContent(it, onBack) } },
+        detail = { shown, onBack -> paneContent(shown, onBack) },
         emptyDetail = {
             EmptyState(
+                icon = Icons.AutoMirrored.Filled.List,
                 title = stringResource(R.string.activity_choose_title),
                 message = stringResource(R.string.activity_choose_message)
             )

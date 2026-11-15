@@ -1,5 +1,6 @@
 package com.oriteam.ori.ui.components.state
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
@@ -31,6 +32,7 @@ import com.oriteam.ori.ui.components.text.Text
 import com.oriteam.ori.ui.theme.LocalOriAppearance
 import com.oriteam.ori.ui.theme.OriDimensions
 import com.oriteam.ori.ui.theme.OriSpacing
+import com.oriteam.ori.ui.theme.contentSwap
 
 /**
  * Renders [state] with the matching view. [emptyContent] is required because only the
@@ -44,18 +46,37 @@ fun <T> StatefulContent(
     modifier: Modifier = Modifier,
     content: @Composable (T) -> Unit
 ) {
-    Box(modifier = modifier) {
-        when (state) {
-            ContentState.Loading -> LoadingState()
-            ContentState.Empty -> emptyContent()
-            is ContentState.Error -> ErrorState(
-                message = stringResource(state.messageRes),
-                onRetry = onRetry.takeIf { state.canRetry }
-            )
-            is ContentState.Content -> content(state.value)
+    val motion = LocalOriAppearance.current.motion
+    // Only a change of situation is animated (loading, then the list): new data in the same list is not.
+    AnimatedContent(
+        targetState = state,
+        modifier = modifier,
+        transitionSpec = { contentSwap(motion).using(null) },
+        contentKey = { it.situation },
+        label = "ContentState"
+    ) { shown ->
+        Box {
+            when (shown) {
+                ContentState.Loading -> LoadingState()
+                ContentState.Empty -> emptyContent()
+                is ContentState.Error -> ErrorState(
+                    message = stringResource(shown.messageRes),
+                    onRetry = onRetry.takeIf { shown.canRetry }
+                )
+                is ContentState.Content -> content(shown.value)
+            }
         }
     }
 }
+
+/** Which of the four situations this is, whatever the data inside: what a cross-fade is keyed by. */
+internal val ContentState<*>.situation: Int
+    get() = when (this) {
+        ContentState.Loading -> 0
+        ContentState.Empty -> 1
+        is ContentState.Error -> 2
+        is ContentState.Content -> 3
+    }
 
 @Composable
 fun LoadingState(modifier: Modifier = Modifier, message: String = stringResource(R.string.state_loading)) {

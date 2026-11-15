@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.oriteam.ori.R
 import com.oriteam.ori.ui.adaptive.CenteredContent
@@ -34,6 +35,7 @@ import com.oriteam.ori.ui.adaptive.FillOrScrollColumn
 import com.oriteam.ori.ui.adaptive.LocalWindowLayout
 import com.oriteam.ori.ui.components.brand.OriBrandBlock
 import com.oriteam.ori.ui.components.brand.OriDecorativeArcs
+import com.oriteam.ori.ui.components.brand.OriIntroBrand
 import com.oriteam.ori.ui.components.form.OriPrimaryButton
 import com.oriteam.ori.ui.components.form.OriSecondaryButton
 import com.oriteam.ori.ui.components.text.Text
@@ -60,15 +62,26 @@ private val PagerIndicatorClearance = 48.dp
 @Composable
 internal fun OnboardingPage(
     showOptions: Boolean,
+    playsIntro: Boolean?,
     onTimerFinished: () -> Unit,
+    onIntroFinished: () -> Unit,
     onSignIn: () -> Unit,
     onCreateAccount: () -> Unit,
     onContinueWithoutAccount: () -> Unit
 ) {
-    LaunchedEffect(Unit) {
-        if (!showOptions) {
+    // The opening calls onIntroFinished; without it, the options come after a short pause.
+    LaunchedEffect(playsIntro) {
+        if (!showOptions && playsIntro == false) {
             delay(TAGLINE_DURATION_MILLIS)
             onTimerFinished()
+        }
+    }
+    val brand: @Composable (Dp) -> Unit = { height ->
+        when (playsIntro) {
+            true -> OriIntroBrand(onFinished = onIntroFinished, logoHeight = height)
+            false -> OriBrandBlock(logoHeight = height)
+            // The preference takes a moment to read: the place stays, empty, so nothing jumps.
+            null -> Spacer(modifier = Modifier.height(height))
         }
     }
 
@@ -99,7 +112,7 @@ internal fun OnboardingPage(
                         .weight(1f)
                         .fillMaxHeight(),
                     verticalArrangement = Arrangement.Center
-                ) { OriBrandBlock(logoHeight = 96.dp) }
+                ) { brand(96.dp) }
                 FillOrScrollColumn(
                     modifier = Modifier
                         .weight(1f)
@@ -110,7 +123,7 @@ internal fun OnboardingPage(
         } else {
             FillOrScrollColumn(modifier = contentModifier, verticalArrangement = Arrangement.SpaceBetween) {
                 Spacer(modifier = Modifier.height(OriSpacing.ExtraLarge))
-                OriBrandBlock()
+                brand(200.dp)
                 CenteredContent { bottomContent() }
             }
         }

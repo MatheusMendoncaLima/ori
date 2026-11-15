@@ -10,6 +10,7 @@ import {
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -206,6 +207,22 @@ describe("communication boards: primary user", () => {
     await assertSucceeds(deleteDoc(doc(db, BOARD)));
   });
 
+  it("a symbol may have a known tile color and kind of word", async () => {
+    const db = dbAs(PRIMARY);
+    await assertSucceeds(updateDoc(doc(db, SYMBOL), edit({ color: "pink" })));
+    await assertSucceeds(updateDoc(doc(db, SYMBOL), edit({ color: "none" })));
+    await assertSucceeds(updateDoc(doc(db, SYMBOL), edit({ color: null })));
+    await assertFails(updateDoc(doc(db, SYMBOL), edit({ color: "#ff0000" })));
+    await assertFails(updateDoc(doc(db, SYMBOL), edit({ color: 3 })));
+    await assertSucceeds(
+      updateDoc(doc(db, SYMBOL), edit({ wordClass: "person" })),
+    );
+    await assertSucceeds(updateDoc(doc(db, SYMBOL), edit({ wordClass: null })));
+    await assertFails(
+      updateDoc(doc(db, SYMBOL), edit({ wordClass: "animal" })),
+    );
+  });
+
   it("uses a device photo or an emoji, never image data", async () => {
     const db = dbAs(PRIMARY);
     const ref = doc(db, `${BOARD}/symbols/new`);
@@ -254,6 +271,39 @@ describe("communication boards: primary user", () => {
         doc(db, `users/${PRIMARY}/aacBoards/long`),
         newBoard(PRIMARY, { name: "x".repeat(41) }),
       ),
+    );
+  });
+
+  it("a board may record its language, as a language tag", async () => {
+    const db = dbAs(PRIMARY);
+    const ref = (id) => doc(db, `users/${PRIMARY}/aacBoards/${id}`);
+    await assertSucceeds(
+      setDoc(ref("pt"), newBoard(PRIMARY, { language: "pt-BR" })),
+    );
+    await assertSucceeds(
+      setDoc(ref("es"), newBoard(PRIMARY, { language: "es" })),
+    );
+    await assertSucceeds(
+      setDoc(ref("latam"), newBoard(PRIMARY, { language: "es-419" })),
+    );
+    await assertFails(
+      setDoc(ref("empty"), newBoard(PRIMARY, { language: "" })),
+    );
+    await assertFails(
+      setDoc(ref("word"), newBoard(PRIMARY, { language: "português" })),
+    );
+    await assertFails(
+      setDoc(ref("number"), newBoard(PRIMARY, { language: 7 })),
+    );
+    await assertFails(
+      setDoc(
+        ref("long"),
+        newBoard(PRIMARY, { language: "pt-" + "x".repeat(40) }),
+      ),
+    );
+    // Renaming keeps the language the board was created with.
+    await assertSucceeds(
+      updateDoc(ref("pt"), { name: "Comida", updatedAt: serverTimestamp() }),
     );
   });
 
@@ -328,6 +378,88 @@ describe("saved messages", () => {
     );
     await assertFails(
       setDoc(ref, { text: "Oi", createdAt: serverTimestamp(), extra: 1 }),
+    );
+  });
+
+  it("may record the language they are in", async () => {
+    const db = dbAs(PRIMARY);
+    const ref = (id) => doc(db, `users/${PRIMARY}/aacSavedMessages/${id}`);
+    await assertSucceeds(
+      setDoc(ref("l1"), {
+        text: "Oi",
+        language: "pt-BR",
+        createdAt: serverTimestamp(),
+      }),
+    );
+    await assertFails(
+      setDoc(ref("l2"), {
+        text: "Oi",
+        language: "1",
+        createdAt: serverTimestamp(),
+      }),
+    );
+    await assertFails(
+      setDoc(ref("l3"), {
+        text: "Oi",
+        language: null,
+        createdAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it("may have their own emoji, which changes after saving without the text", async () => {
+    const db = dbAs(PRIMARY);
+    const ref = doc(db, `users/${PRIMARY}/aacSavedMessages/e1`);
+    await assertSucceeds(
+      setDoc(ref, { text: "Oi", emoji: "👋", createdAt: serverTimestamp() }),
+    );
+    await assertSucceeds(updateDoc(ref, { emoji: "🌟" }));
+    await assertSucceeds(updateDoc(ref, { emoji: deleteField() }));
+    await assertFails(updateDoc(ref, { emoji: "" }));
+    await assertFails(updateDoc(ref, { emoji: "x".repeat(33) }));
+    await assertFails(updateDoc(ref, { emoji: 1 }));
+    await assertFails(updateDoc(ref, { emoji: "🌟", text: "Tchau" }));
+    await assertFails(
+      updateDoc(doc(dbAs(MANAGER), `users/${PRIMARY}/aacSavedMessages/e1`), {
+        emoji: "🌟",
+      }),
+    );
+  });
+
+  it("may be moved: only their place changes, inside the range, by their owner", async () => {
+    const db = dbAs(PRIMARY);
+    const ref = (id) => doc(db, `users/${PRIMARY}/aacSavedMessages/${id}`);
+    await assertSucceeds(
+      setDoc(ref("p1"), { text: "Oi", createdAt: serverTimestamp() }),
+    );
+    // Brought from the device with the place it had there.
+    await assertSucceeds(
+      setDoc(ref("p2"), {
+        text: "Tchau",
+        position: 3,
+        createdAt: serverTimestamp(),
+      }),
+    );
+    await assertFails(
+      setDoc(ref("p3"), {
+        text: "Oi",
+        position: -1,
+        createdAt: serverTimestamp(),
+      }),
+    );
+    const batch = writeBatch(db);
+    batch.update(ref("p1"), { position: 1 });
+    batch.update(ref("p2"), { position: 0 });
+    await assertSucceeds(batch.commit());
+    await assertSucceeds(updateDoc(ref("p1"), { position: 999 }));
+    await assertFails(updateDoc(ref("p1"), { position: 1000 }));
+    await assertFails(updateDoc(ref("p1"), { position: "1" }));
+    await assertFails(updateDoc(ref("p1"), { position: 1.5 }));
+    await assertFails(updateDoc(ref("p1"), { position: 2, text: "Olá" }));
+    await assertFails(
+      updateDoc(doc(dbAs(MANAGER), `users/${PRIMARY}/aacSavedMessages/p1`), {
+        position: 0,
+      }),
     );
   });
 

@@ -5,11 +5,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.oriteam.ori.domain.preferences.AccountPreferences
 import com.oriteam.ori.domain.preferences.ContentDensity
@@ -18,6 +22,7 @@ import com.oriteam.ori.domain.preferences.StartArea
 import com.oriteam.ori.domain.preferences.TextScale
 import com.oriteam.ori.domain.preferences.ThemeMode
 import com.oriteam.ori.testing.OriTestWindow
+import com.oriteam.ori.ui.components.navigation.OriTopBar
 import com.oriteam.ori.ui.components.text.Text
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -60,6 +65,27 @@ class PreferencesScreenTest {
     private fun tap(text: String) = composeRule.onNodeWithText(text).performScrollTo().performClick()
 
     @Test
+    fun `the title of every settings page fits in one line of a phone`() {
+        composeRule.setContent {
+            OriTestWindow(widthDp = 360, heightDp = 780) {
+                Column {
+                    PreferenceSection.entries.forEach { section ->
+                        OriTopBar(title = stringResource(sectionTitles.getValue(section)), onNavigateBack = {})
+                    }
+                }
+            }
+        }
+
+        PreferenceSection.entries.forEach { section ->
+            val title = composeRule.activity.getString(sectionTitles.getValue(section))
+            val node = composeRule.onNode(hasText(title), useUnmergedTree = true).fetchSemanticsNode()
+            val layouts = mutableListOf<TextLayoutResult>()
+            node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
+            assertEquals(title, 1, layouts.single().lineCount)
+        }
+    }
+
+    @Test
     fun `accessibility options call their own preference`() {
         render(PreferenceSection.ACCESSIBILITY)
 
@@ -76,7 +102,7 @@ class PreferencesScreenTest {
         render(PreferenceSection.SCREEN)
 
         tap("Amplo (mais espaço entre os itens)")
-        composeRule.onNodeWithText("Formar frase").performScrollTo().performClick()
+        composeRule.onNodeWithText("Frases").performScrollTo().performClick()
 
         assertEquals(listOf(ContentDensity.SPACIOUS, StartArea.COMMUNICATION), calls)
     }

@@ -1,0 +1,40 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Cópia de values/strings.xml, para o português vencer outro idioma do aparelho. Mude os dois juntos: o AppLanguagesTest confere. -->
+    <!-- Textos comuns: nome do app, navegação, estados, erros e sincronização. -->
+    <string name="error_missing_sign_in_fields">Preencha o e-mail e a senha</string>
+    <string name="error_missing_reset_email">Informe o e-mail para redefinir a senha</string>
+    <string name="error_missing_registration_fields">Preencha todos os campos</string>
+    <string name="error_password_mismatch">As senhas não coincidem</string>
+    <!-- Keep the number in sync with MIN_PASSWORD_LENGTH in CredentialsValidation.kt. -->
+    <string name="error_password_too_short">A senha precisa ter no mínimo 6 caracteres</string>
+    <string name="error_invalid_email">Este e-mail não é válido</string>
+    <string name="error_invalid_credentials">E-mail ou senha incorretos</string>
+    <string name="error_email_already_in_use">Este e-mail já está em uso</string>
+    <string name="error_weak_password">Escolha uma senha mais forte</string>
+    <string name="error_user_disabled">Esta conta está desativada</string>
+    <string name="error_too_many_requests">Muitas tentativas. Aguarde um pouco e tente novamente</string>
+    <string name="error_network_unavailable">Sem conexão. Verifique sua internet e tente novamente</string>
+    <string name="error_profile_update_failed">Sua conta foi criada, mas não foi possível salvar seu nome</string>
+    <string name="error_unknown">Algo deu errado. Tente novamente</string>
+    <string name="error_service_unavailable">Este serviço ainda não está disponível. Tente mais tarde</string>
+    <!-- Shared actions and states -->
+    <string name="action_back">Voltar</string>
+    <string name="action_retry">Tentar novamente</string>
+    <string name="state_loading">Carregando…</string>
+    <string name="state_error_title">Não foi possível carregar</string>
+    <!-- Session and data errors (DataError) -->
+    <string name="error_permission_denied">Você não tem permissão para ver ou alterar estes dados</string>
+    <string name="error_not_found">Não encontramos o que você procurou</string>
+    <string name="error_invalid_input">Os dados informados não são válidos</string>
+    <string name="error_action_not_possible">Não foi possível fazer isso agora</string>
+    <string name="error_missing_profile_name">Informe seu nome</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="main_my_routine">Minha rotina</string>
+    <string name="main_care_recipients">Acompanhados</string>
+    <string name="sync_showing_saved_data">Sem conexão. Mostrando a última versão salva no aparelho.</string>
+    <string name="sync_pending_changes">Alteração salva no aparelho. Ela será enviada quando houver conexão.</string>
+    <string name="main_home">Início</string>
+    <string name="main_profile">Perfil</string>
+    <string name="main_routine">Rotina</string>
+    <string name="main_sentences">Frases</string>
+</resources>

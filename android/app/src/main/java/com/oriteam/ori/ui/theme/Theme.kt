@@ -84,3 +84,15 @@ fun OriTheme(
         )
     }
 }
+
+/** The colors inside the app, after login: the teal as the main color ([OriLightAppColorScheme]). */
+@Composable
+fun OriAppColors(content: @Composable () -> Unit) {
+    val isDark = LocalOriColors.current == OriDarkExtraColors
+    MaterialTheme(
+        colorScheme = if (isDark) OriDarkAppColorScheme else OriLightAppColorScheme,
+        typography = MaterialTheme.typography,
+        shapes = MaterialTheme.shapes,
+        content = content
+    )
+}

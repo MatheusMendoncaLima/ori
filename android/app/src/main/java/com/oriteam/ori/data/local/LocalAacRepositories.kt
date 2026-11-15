@@ -10,7 +10,11 @@ import com.oriteam.ori.domain.aac.MAX_SAVED_MESSAGES
 import com.oriteam.ori.domain.aac.MAX_SYMBOLS_PER_BOARD
 import com.oriteam.ori.domain.aac.SavedMessage
 import com.oriteam.ori.domain.aac.SavedMessageRepository
+import com.oriteam.ori.domain.aac.SymbolColor
 import com.oriteam.ori.domain.aac.SymbolDraft
+import com.oriteam.ori.domain.aac.inChosenOrder
+import com.oriteam.ori.domain.aac.storedKey
+import com.oriteam.ori.domain.aac.wordClassFromKey
 import com.oriteam.ori.domain.common.DataResult
 import com.oriteam.ori.domain.common.ListSnapshot
 import com.oriteam.ori.domain.profile.LOCAL_OWNER_UID
@@ -20,7 +24,7 @@ import java.time.Clock
 import java.util.UUID
 import javax.inject.Inject
 
-internal fun AacBoardEntity.toDomain() = AacBoard(id, name, position, createdBy = LOCAL_OWNER_UID)
+internal fun AacBoardEntity.toDomain() = AacBoard(id, name, position, createdBy = LOCAL_OWNER_UID, language = language)
 
 internal fun AacSymbolEntity.toDomain() = AacSymbol(
     id = id,
@@ -29,7 +33,9 @@ internal fun AacSymbolEntity.toDomain() = AacSymbol(
     phrase = phrase,
     image = symbolImageFrom(image),
     position = position,
-    createdBy = LOCAL_OWNER_UID
+    createdBy = LOCAL_OWNER_UID,
+    color = SymbolColor.fromKey(color),
+    wordClass = wordClassFromKey(wordClass)
 )
 
 /** Boards and symbols of someone without an account. */
@@ -53,16 +59,17 @@ class LocalAacBoardRepository @Inject constructor(database: OriDatabase) : AacBo
 
     override fun newSymbolId(ownerUid: String, boardId: String): String = UUID.randomUUID().toString()
 
-    override suspend fun createBoard(ownerUid: String, name: String, position: Int) =
-        createBoardWithSymbols(ownerUid, name, position, symbols = emptyList())
+    override suspend fun createBoard(ownerUid: String, name: String, position: Int, language: String) =
+        createBoardWithSymbols(ownerUid, name, position, symbols = emptyList(), language = language)
 
     override suspend fun createBoardWithSymbols(
         ownerUid: String,
         name: String,
         position: Int,
-        symbols: List<SymbolDraft>
+        symbols: List<SymbolDraft>,
+        language: String
     ) = runLocalWrite {
-        val board = AacBoardEntity(UUID.randomUUID().toString(), name, position)
+        val board = AacBoardEntity(UUID.randomUUID().toString(), name, position, language)
         dao.insertBoardWithSymbols(
             board,
             symbols.mapIndexed { index, draft -> draft.toEntity(UUID.randomUUID().toString(), board.id, index) }
@@ -95,7 +102,7 @@ class LocalAacBoardRepository @Inject constructor(database: OriDatabase) : AacBo
         runLocalWrite { dao.moveSymbols(positions) }
 
     private fun SymbolDraft.toEntity(id: String, boardId: String, position: Int) =
-        AacSymbolEntity(id, boardId, label, phrase, image?.toStoredImage(), position)
+        AacSymbolEntity(id, boardId, label, phrase, image?.toStoredImage(), position, color?.key, wordClass?.storedKey)
 }
 
 /** Saved messages of someone without an account. */
@@ -106,12 +113,28 @@ class LocalSavedMessageRepository @Inject constructor(
     private val dao = database.savedMessageDao()
 
     override fun observeSavedMessages(ownerUid: String): Flow<DataResult<List<SavedMessage>>> =
-        dao.observe(MAX_SAVED_MESSAGES).map { list -> list.map { SavedMessage(it.id, it.text) } }.asLocalResult()
+        dao.observe(MAX_SAVED_MESSAGES)
+            .map { list -> list.map { it.toSavedMessage() }.inChosenOrder() }
+            .asLocalResult()
 
-    override suspend fun saveMessage(ownerUid: String, text: String) = runLocalWrite {
-        dao.upsert(SavedMessageEntity(UUID.randomUUID().toString(), text, clock.millis()))
+    override suspend fun saveMessage(
+        ownerUid: String,
+        text: String,
+        language: String,
+        emoji: String?,
+        position: Int?
+    ) = runLocalWrite {
+        dao.upsert(SavedMessageEntity(UUID.randomUUID().toString(), text, clock.millis(), language, emoji, position))
     }
+
+    override suspend fun reorderSavedMessages(ownerUid: String, positions: Map<String, Int>) =
+        runLocalWrite { dao.move(positions) }
+
+    override suspend fun setSavedMessageEmoji(ownerUid: String, messageId: String, emoji: String?) =
+        runLocalWrite { dao.setEmoji(messageId, emoji) }
 
     override suspend fun deleteSavedMessage(ownerUid: String, messageId: String) =
         runLocalWrite { dao.delete(messageId) }
 }
+
+internal fun SavedMessageEntity.toSavedMessage() = SavedMessage(id, text, language, emoji, position)

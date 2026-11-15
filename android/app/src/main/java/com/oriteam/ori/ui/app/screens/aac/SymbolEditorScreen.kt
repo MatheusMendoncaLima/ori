@@ -21,14 +21,16 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.oriteam.ori.R
+import com.oriteam.ori.domain.aac.SymbolColor
 import com.oriteam.ori.domain.aac.SymbolImage
+import com.oriteam.ori.domain.aac.WordClass
 import com.oriteam.ori.ui.adaptive.CenteredContent
 import com.oriteam.ori.ui.adaptive.FillOrScrollColumn
 import com.oriteam.ori.ui.components.form.EqualWidthRow
+import com.oriteam.ori.ui.components.form.FormActionBar
 import com.oriteam.ori.ui.components.form.FormMessage
 import com.oriteam.ori.ui.components.form.FormMessageType
 import com.oriteam.ori.ui.components.form.LabeledTextField
-import com.oriteam.ori.ui.components.form.LoadingButton
 import com.oriteam.ori.ui.components.form.OriNotice
 import com.oriteam.ori.ui.components.form.OriSecondaryButton
 import com.oriteam.ori.ui.components.form.OriTextButton
@@ -46,6 +48,8 @@ data class SymbolEditorActions(
     val onEmojiChange: (String) -> Unit,
     val onPhotoPicked: (String) -> Unit,
     val onRemoveImage: () -> Unit,
+    val onColorChange: (SymbolColor?) -> Unit = {},
+    val onWordClassChange: (WordClass?) -> Unit = {},
     val onSave: () -> Unit,
     val onDelete: (() -> Unit)?,
     val onClose: () -> Unit
@@ -63,6 +67,7 @@ fun SymbolEditorScreen(state: SymbolEditorUiState, actions: SymbolEditorActions)
     }
     Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.ime)) {
         OriTopBar(
+            maxWidth = OriDimensions.FormMaxWidth,
             title = stringResource(if (state.isNew) R.string.aac_new_symbol else R.string.aac_edit_symbol),
             onNavigateBack = actions.onClose
         )
@@ -111,24 +116,27 @@ fun SymbolEditorScreen(state: SymbolEditorUiState, actions: SymbolEditorActions)
                     },
                     onRemoveImage = actions.onRemoveImage
                 )
+                WordClassChoice(selected = state.wordClass, onSelect = actions.onWordClassChange)
+                SymbolColorChoice(selected = state.color, onSelect = actions.onColorChange)
                 FormMessage(messageRes = state.errorMessageRes, type = FormMessageType.ERROR)
-                Spacer(modifier = Modifier.height(OriSpacing.Large))
-                LoadingButton(
-                    text = stringResource(R.string.aac_save_symbol),
-                    isLoading = state.isSaving,
-                    onClick = actions.onSave
-                )
+                // Deleting stays at the end of the form, away from "Salvar": it cannot be undone.
                 actions.onDelete?.let { onDelete ->
+                    Spacer(modifier = Modifier.height(OriSpacing.Medium))
                     OriTextButton(
                         text = stringResource(R.string.aac_delete_symbol),
                         onClick = onDelete,
                         color = MaterialTheme.colorScheme.error
                     )
                 }
-                OriTextButton(text = stringResource(R.string.action_cancel), onClick = actions.onClose)
-                Spacer(modifier = Modifier.height(OriSpacing.Huge))
+                Spacer(modifier = Modifier.height(OriSpacing.Large))
             }
         }
+        FormActionBar(
+            saveLabel = stringResource(R.string.aac_save_symbol),
+            isSaving = state.isSaving,
+            onSave = actions.onSave,
+            onCancel = actions.onClose
+        )
     }
 }
 

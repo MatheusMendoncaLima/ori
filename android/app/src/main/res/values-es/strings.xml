@@ -1,0 +1,39 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Textos comuns em espanhol: navegação, estados, erros e sincronização. -->
+    <string name="error_missing_sign_in_fields">Escribe tu correo y tu contraseña</string>
+    <string name="error_missing_reset_email">Escribe tu correo para restablecer la contraseña</string>
+    <string name="error_missing_registration_fields">Completa todos los campos</string>
+    <string name="error_password_mismatch">Las contraseñas no coinciden</string>
+    <!-- Keep the number in sync with MIN_PASSWORD_LENGTH in CredentialsValidation.kt. -->
+    <string name="error_password_too_short">La contraseña debe tener al menos 6 caracteres</string>
+    <string name="error_invalid_email">Este correo no es válido</string>
+    <string name="error_invalid_credentials">Correo o contraseña incorrectos</string>
+    <string name="error_email_already_in_use">Este correo ya está en uso</string>
+    <string name="error_weak_password">Elige una contraseña más segura</string>
+    <string name="error_user_disabled">Esta cuenta está desactivada</string>
+    <string name="error_too_many_requests">Demasiados intentos. Espera un poco y vuelve a intentarlo</string>
+    <string name="error_network_unavailable">Sin conexión. Revisa tu internet y vuelve a intentarlo</string>
+    <string name="error_profile_update_failed">Tu cuenta se creó, pero no se pudo guardar tu nombre</string>
+    <string name="error_unknown">Algo salió mal. Vuelve a intentarlo</string>
+    <string name="error_service_unavailable">Este servicio todavía no está disponible. Vuelve a intentarlo más tarde</string>
+    <!-- Shared actions and states -->
+    <string name="action_back">Volver</string>
+    <string name="action_retry">Volver a intentar</string>
+    <string name="state_loading">Cargando…</string>
+    <string name="state_error_title">No se pudo cargar</string>
+    <!-- Session and data errors (DataError) -->
+    <string name="error_permission_denied">No tienes permiso para ver ni cambiar estos datos</string>
+    <string name="error_not_found">No encontramos lo que buscabas</string>
+    <string name="error_invalid_input">Los datos no son válidos</string>
+    <string name="error_action_not_possible">No se puede hacer esto ahora</string>
+    <string name="error_missing_profile_name">Escribe tu nombre</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="main_my_routine">Mi rutina</string>
+    <string name="main_care_recipients">Personas que acompaño</string>
+    <string name="sync_showing_saved_data">Sin conexión. Se muestra la última versión guardada en este dispositivo.</string>
+    <string name="sync_pending_changes">Cambio guardado en este dispositivo. Se enviará cuando haya conexión.</string>
+    <string name="main_home">Inicio</string>
+    <string name="main_profile">Perfil</string>
+    <string name="main_routine">Rutina</string>
+    <string name="main_sentences">Frases</string>
+</resources>

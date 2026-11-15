@@ -12,7 +12,20 @@
           "package_name": "com.oriteam.ori"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "439499351375-6q17b5o2hkpqn6jeqr6nn5s9er9alkit.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.oriteam.ori",
+            "certificate_hash": "3127179c8acc892b4f44da65a533d6cdaf1a53ee"
+          }
+        },
+        {
+          "client_id": "439499351375-jphtnjtbmhkqkssgf25ekpot8r5dgdkv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBbq5MEQ0tA02pQ2_8SyP4ZXTJO5QQWMmk"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "439499351375-jphtnjtbmhkqkssgf25ekpot8r5dgdkv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

@@ -16,22 +16,27 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.dp
 import com.oriteam.ori.ui.theme.LocalOriAppearance
-import com.oriteam.ori.ui.theme.LocalOriColors
+import com.oriteam.ori.ui.theme.OriAccent
 import com.oriteam.ori.ui.theme.OriSpacing
 
-/** A soft colored square with an icon, used to tell the rows of a menu apart at a glance. */
+/**
+ * A soft square with an icon, used to tell the rows of a menu apart at a glance. Its [accent] is chosen by the
+ * screen: the color of the area the row leads to ([areaAccent], as on Início) or of the settings page
+ * ([OriExtraColors.settings], as in the wireframe). Without one, the row has the app's own color, the brand cyan.
+ */
 @Composable
-private fun OriIconTile(painter: Painter, accentIndex: Int, modifier: Modifier = Modifier) {
-    val accents = LocalOriColors.current.accents
-    val accent = accents[accentIndex % accents.size]
+private fun OriIconTile(painter: Painter, accent: OriAccent?, modifier: Modifier = Modifier) {
+    val scheme = MaterialTheme.colorScheme
+    val container = accent?.container ?: scheme.primaryContainer
+    val tint = if (accent == null) scheme.primary else scheme.onSurface
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .size(44.dp)
             .clip(MaterialTheme.shapes.medium)
-            .background(accent.container)
+            .background(container)
     ) {
-        Icon(painter = painter, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
+        Icon(painter = painter, contentDescription = null, tint = tint)
     }
 }
 
@@ -43,26 +48,26 @@ private fun OriIconTile(painter: Painter, accentIndex: Int, modifier: Modifier =
 fun OriMenuRow(
     title: String,
     icon: ImageVector,
-    accentIndex: Int,
+    accent: OriAccent?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     description: String? = null
 ) {
-    OriMenuRow(title, rememberVectorPainter(icon), accentIndex, onClick, modifier, description)
+    OriMenuRow(title, rememberVectorPainter(icon), accent, onClick, modifier, description)
 }
 
 @Composable
 fun OriMenuRow(
     title: String,
     painter: Painter,
-    accentIndex: Int,
+    accent: OriAccent?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     description: String? = null
 ) {
     OriRow(modifier = modifier, isSelected = false, onClick = onClick) {
         if (LocalOriAppearance.current.showsDecoration) {
-            OriIconTile(painter = painter, accentIndex = accentIndex)
+            OriIconTile(painter = painter, accent = accent)
             Spacer(modifier = Modifier.width(OriSpacing.Medium))
         }
         OriRowTexts(headline = title, supportingText = description, modifier = Modifier.weight(1f))

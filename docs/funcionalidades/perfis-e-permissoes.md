@@ -234,3 +234,12 @@ firebase deploy --only firestore:rules,firestore:indexes,functions
 
 Antes de publicar, confira as regras atuais no console: este arquivo
 **substitui** as regras existentes.
+
+## Erro do código de convite (09/11/2026)
+
+Enquanto as Cloud Functions de convite não estão publicadas (exigem o plano Blaze), "Gerar código de convite"
+recebia "não encontrado" do servidor e mostrava "Código não encontrado. Confira as letras". Agora o app separa os dois
+casos pelo texto do erro do servidor (`SERVER_NOT_FOUND_MESSAGE`, igual ao de `careInvitations.ts`): um código que não
+existe continua "Código não encontrado"; uma função que não existe mostra "Este serviço ainda não está disponível".
+Teste: `FirestoreSchemaTest`. Os convites só funcionam de verdade depois de publicar as funções, ou de reescrever os
+convites só com o Firestore e as regras.

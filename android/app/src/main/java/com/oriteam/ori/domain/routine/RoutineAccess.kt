@@ -1,7 +1,5 @@
 package com.oriteam.ori.domain.routine
 
-import com.oriteam.ori.domain.model.TaskStatus
-
 /**
  * What a viewer may do with a routine. These functions mirror `functions/firestore.rules`
  * so the interface only offers possible actions; the rules are what protect the data.

@@ -8,11 +8,11 @@ import com.oriteam.ori.domain.aac.MAX_SYMBOLS_PER_BOARD
 import com.oriteam.ori.domain.aac.SavedMessageRepository
 import com.oriteam.ori.domain.aac.SymbolDraft
 import com.oriteam.ori.domain.aac.SymbolImage
+import com.oriteam.ori.domain.aac.contentLanguage
 import com.oriteam.ori.domain.aac.nextPosition
 import com.oriteam.ori.domain.common.DataError
 import com.oriteam.ori.domain.common.DataResult
 import com.oriteam.ori.domain.common.WriteStatus
-import com.oriteam.ori.domain.model.TaskStatus
 import com.oriteam.ori.domain.photos.PhotoStore
 import com.oriteam.ori.domain.routine.ActivityDraft
 import com.oriteam.ori.domain.routine.DeleteScope
@@ -21,6 +21,7 @@ import com.oriteam.ori.domain.routine.RoutineRepository
 import com.oriteam.ori.domain.routine.RoutineSeries
 import com.oriteam.ori.domain.routine.RoutineTask
 import com.oriteam.ori.domain.routine.RoutineViewer
+import com.oriteam.ori.domain.routine.TaskStatus
 import com.oriteam.ori.domain.routine.seriesIdOf
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
@@ -155,7 +156,9 @@ class MoveLocalDataToAccount @Inject constructor(
                             accountUid,
                             local.board.name,
                             nextPosition(existing.map { it.position }),
-                            local.symbols.map { it.toDraft() }
+                            local.symbols.map { it.toDraft() },
+                            // A board from before boards recorded their language is in the app's.
+                            local.board.contentLanguage
                         ).confirm()
                         localData.removeBoard(local.board.id)
                         existing += local.board.copy(position = nextPosition(existing.map { it.position }))
@@ -202,13 +205,21 @@ class MoveLocalDataToAccount @Inject constructor(
             if (data.savedMessages.isEmpty()) return
             val existing = savedMessages.observeSavedMessages(accountUid).first().valueOrWait().map { it.text }.toSet()
             data.savedMessages.forEach { message ->
-                if (message.text !in existing) savedMessages.saveMessage(accountUid, message.text).confirm()
+                if (message.text !in existing) {
+                    savedMessages.saveMessage(
+                        accountUid,
+                        message.text,
+                        message.contentLanguage,
+                        message.emoji,
+                        message.position
+                    ).confirm()
+                }
                 localData.removeSavedMessage(message.id)
             }
         }
     }
 
-    private fun AacSymbol.toDraft() = SymbolDraft(label, phrase, image)
+    private fun AacSymbol.toDraft() = SymbolDraft(label, phrase, image, color, wordClass)
 
     private fun <T> DataResult<T>.valueOrWait(): T = (this as? DataResult.Success)?.value ?: throw NoConfirmation()
 

@@ -100,6 +100,7 @@ private fun sampleOf(type: Type, owner: String): Any = when {
 private fun samplesFor(owner: String): Map<Type, Any> = mapOf(
     String::class.java to owner,
     Integer.TYPE to 0,
+    Int::class.javaObjectType to 0,
     java.lang.Boolean.TYPE to true,
     LocalDate::class.java to DAY,
     RoutineViewer::class.java to RoutineViewer.Owner,

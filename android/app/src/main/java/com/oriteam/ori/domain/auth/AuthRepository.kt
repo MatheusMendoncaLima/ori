@@ -31,5 +31,11 @@ interface AuthRepository {
      */
     suspend fun sendPasswordResetEmail(email: String): AuthResult
 
+    /**
+     * Signs in with the Google account Android gave ([idToken]). The first time, the account is created, with the
+     * name of the Google account; the app profile is created separately, as for an e-mail account.
+     */
+    suspend fun signInWithGoogle(idToken: String): AuthResult
+
     fun signOut()
 }
