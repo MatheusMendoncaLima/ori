@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material3.Icon
@@ -243,7 +242,7 @@ private fun WithoutName(tile: @Composable () -> Unit) {
 @Composable
 internal fun TurnPagesAtEdges(drag: HomeDragState, pager: PagerState, homePages: IntRange, widthPx: Float) {
     val density = LocalDensity.current
-    val insets = WindowInsets.safeDrawing.asPaddingValues()
+    val insets = WindowInsets.homeBars.asPaddingValues()
     val direction = LocalLayoutDirection.current
     val edge = with(density) { EdgeWidth.toPx() }
     val left = with(density) { insets.calculateLeftPadding(direction).toPx() } + edge

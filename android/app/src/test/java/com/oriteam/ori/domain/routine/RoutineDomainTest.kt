@@ -42,7 +42,7 @@ class RoutineDomainTest {
         assertEquals(TimeInput.Valid(LocalTime.of(8, 5)), parseScheduledTime(" 8:05 "))
         assertEquals(TimeInput.Valid(LocalTime.of(23, 59)), parseScheduledTime("23:59"))
         assertEquals(TimeInput.Empty, parseScheduledTime("  "))
-        for (invalid in listOf("24:00", "12:60", "8h", "0830", "ab:cd", "13:00 PM", "0:30 am")) {
+        for (invalid in listOf("24:00", "12:60", "8h", "830a", "2460", "08", "ab:cd", "13:00 PM", "0:30 am")) {
             assertEquals(invalid, TimeInput.Invalid, parseScheduledTime(invalid))
         }
     }
@@ -54,6 +54,17 @@ class RoutineDomainTest {
         assertEquals(TimeInput.Valid(LocalTime.of(20, 30)), parseScheduledTime("8:30pm"))
         assertEquals(TimeInput.Valid(LocalTime.of(0, 15)), parseScheduledTime("12:15 a.m."))
         assertEquals(TimeInput.Valid(LocalTime.of(12, 15)), parseScheduledTime("12:15 PM"))
+    }
+
+    @Test
+    fun `time input takes the numbers of a number keyboard and the time a picker writes`() {
+        // G4: with 24 hours the keyboard is of numbers, which may have no ":".
+        assertEquals(TimeInput.Valid(LocalTime.of(8, 30)), parseScheduledTime("0830"))
+        assertEquals(TimeInput.Valid(LocalTime.of(8, 30)), parseScheduledTime("830"))
+        assertEquals(TimeInput.Valid(LocalTime.of(21, 5)), parseScheduledTime("2105"))
+        // Android writes a no-break space before AM/PM, and Spanish writes "p. m.".
+        assertEquals(TimeInput.Valid(LocalTime.of(20, 30)), parseScheduledTime("8:30 PM"))
+        assertEquals(TimeInput.Valid(LocalTime.of(20, 30)), parseScheduledTime("8:30 p. m."))
     }
 
     @Test

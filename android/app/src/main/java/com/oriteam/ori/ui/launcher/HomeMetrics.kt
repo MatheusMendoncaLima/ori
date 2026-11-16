@@ -4,9 +4,12 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.union
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -133,7 +136,7 @@ internal fun rememberHomeMetrics(
     showsLabels: Boolean = true,
     hasDock: Boolean = true
 ): HomeMetrics {
-    val insets = WindowInsets.safeDrawing.asPaddingValues()
+    val insets = WindowInsets.homeBars.asPaddingValues()
     val direction = LocalLayoutDirection.current
     val sides = insets.calculateStartPadding(direction) + insets.calculateEndPadding(direction)
     val bars = insets.calculateTopPadding() + insets.calculateBottomPadding()
@@ -283,7 +286,17 @@ private fun topStripFor(room: HomeRoom): Dp = maxOf(
 private fun gridHeightFor(room: HomeRoom, icon: Dp) =
     room.height - topStripFor(room) - DotsHeight - if (room.hasDock) dockHeightFor(icon) else 0.dp
 
+/**
+ * The edges ORI Home keeps clear: the system bars and the camera cutout, never the keyboard. With the keyboard (the
+ * search of all the apps), the grid used to be measured again, smaller: 8 columns became 5 (G1 of the general test).
+ * The keyboard covers the bottom of the grid instead, as on One UI.
+ */
+internal val WindowInsets.Companion.homeBars: WindowInsets
+    @Composable get() = systemBars.union(displayCutout)
+
 /** A page of the home screen sits inside the system bars, under the top strip and above the dots and the dock. */
 internal fun Modifier.insidePageArea(metrics: HomeMetrics): Modifier = this
-    .safeDrawingPadding()
+    // The same edges as [homeBars], as a Modifier: each padding takes only what the one before left.
+    .systemBarsPadding()
+    .displayCutoutPadding()
     .padding(top = metrics.topStripHeight, bottom = metrics.bottomHeight)

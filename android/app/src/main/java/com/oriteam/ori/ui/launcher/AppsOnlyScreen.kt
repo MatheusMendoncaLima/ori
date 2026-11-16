@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
@@ -52,7 +51,7 @@ internal fun AppsOnlyPane(state: LauncherUiState, viewModel: LauncherViewModel, 
         ) {
             // The writing color of the theme, as in the sheet of all the apps.
             CompositionLocalProvider(LocalHomeInk provides null) {
-                Box(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing)) {
+                Box(modifier = Modifier.windowInsetsPadding(WindowInsets.homeBars)) {
                     AppDrawer(
                         state = state,
                         viewModel = viewModel,

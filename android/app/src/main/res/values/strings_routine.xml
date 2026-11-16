@@ -39,7 +39,8 @@
     <string name="activity_time_pick">Escolher</string>
     <string name="activity_time_pick_confirm">Usar este horário</string>
     <!-- A hint, not a value: the time is optional. -->
-    <string name="activity_time_placeholder">Opcional, ex.: 08:30</string>
+    <string name="activity_time_placeholder">Opcional, ex.: %1$s</string>
+    <string name="activity_time_invalid_example">Esse horário não é válido. Escreva como %1$s</string>
     <string name="activity_day_label">Dia da atividade</string>
     <string name="activity_description_label">Detalhes (opcional)</string>
     <string name="activity_description_placeholder">Passos, lembretes ou observações</string>
@@ -50,7 +51,7 @@
     <string name="activity_save">Salvar</string>
     <string name="activity_error_missing_title">Escreva o que deve ser feito</string>
     <string name="activity_error_title_too_long">O nome pode ter até 200 caracteres</string>
-    <string name="activity_error_invalid_time">Use o horário no formato 08:30</string>
+    <string name="activity_error_invalid_time">Esse horário não é válido</string>
     <string name="activity_error_description_too_long">Os detalhes podem ter até 500 caracteres</string>
     <string name="activity_error_duplicate">Já existe esta atividade neste dia e horário</string>
     <string name="repeat_title">Repetir</string>

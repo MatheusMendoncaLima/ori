@@ -28,19 +28,27 @@ fun FormMessage(
     @StringRes messageRes: Int?,
     type: FormMessageType,
     modifier: Modifier = Modifier
+) = FormMessage(message = messageRes?.let { stringResource(it) }, type = type, modifier = modifier)
+
+/** The same, for a [message] that takes values (an example in the format of the device, a name). */
+@Composable
+fun FormMessage(
+    message: String?,
+    type: FormMessageType,
+    modifier: Modifier = Modifier
 ) {
     val motion = LocalOriAppearance.current.motion
     AnimatedVisibility(
-        visible = messageRes != null,
+        visible = message != null,
         enter = fadeIn(motion.feedback(MESSAGE_ANIMATION_MILLIS)) +
             expandVertically(motion.feedback(MESSAGE_ANIMATION_MILLIS)),
         exit = fadeOut(motion.feedback(MESSAGE_ANIMATION_MILLIS)) +
             shrinkVertically(motion.feedback(MESSAGE_ANIMATION_MILLIS)),
         modifier = modifier
     ) {
-        messageRes?.let {
+        message?.let {
             Text(
-                text = stringResource(it),
+                text = it,
                 style = MaterialTheme.typography.bodyMedium,
                 color = type.color,
                 textAlign = TextAlign.Start,

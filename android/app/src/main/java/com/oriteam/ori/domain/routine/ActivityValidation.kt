@@ -22,18 +22,21 @@ sealed interface TimeInput {
     data object Invalid : TimeInput
 }
 
-/** Hours and minutes with ":" or "h" between them ("8:30", "8h30"), and AM/PM for the 12-hour clock. */
-private val timePattern = Regex("""^(\d{1,2})[:hH](\d{2})\s*(?:([aApP])\.?\s?[mM]\.?)?$""")
+/**
+ * Hours and minutes with ":", "h" or nothing between them ("8:30", "8h30", "830"), and AM/PM for the 12-hour clock.
+ */
+private val timePattern = Regex("""^(\d{1,2})[:hH]?(\d{2})\s*(?:([aApP])\.?\s?[mM]\.?)?$""")
 private const val LAST_HOUR = 23
 private const val LAST_MINUTE = 59
 private const val NOON = 12
 
 /**
- * Accepts the ways people write a time: "8:30", "08:30" and "8h30" on the 24-hour clock, and "8:30 PM" or
- * "8:30pm" on the 12-hour one, as in American English. With AM/PM the hour goes from 1 to 12.
+ * Accepts the ways people write a time: "8:30", "08:30", "8h30" and, on a keyboard of numbers, "830" or "0830" on
+ * the 24-hour clock, and "8:30 PM", "8:30pm" or "8:30 a. m." on the 12-hour one. With AM/PM the hour goes from 1 to
+ * 12. The spaces Android puts in a formatted time (no-break ones) count as spaces, so the time a picker writes is read.
  */
 fun parseScheduledTime(text: String): TimeInput {
-    val trimmed = text.trim()
+    val trimmed = text.replace(' ', ' ').replace(' ', ' ').trim()
     if (trimmed.isEmpty()) return TimeInput.Empty
     val time = timePattern.matchEntire(trimmed)?.destructured?.let { (hourText, minuteText, period) ->
         val hour = hourOf(hourText.toInt(), period.lowercase())
