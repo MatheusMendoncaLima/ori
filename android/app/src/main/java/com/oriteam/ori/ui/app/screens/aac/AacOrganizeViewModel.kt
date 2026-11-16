@@ -254,29 +254,30 @@ class AacOrganizeViewModel @Inject constructor(
             is PendingAacDeletion.Symbol -> {
                 val boardId = selectedBoardId.value ?: return
                 val photos = photosOf(latestSymbols.filter { it.id == pending.id })
-                runWrite(onSuccess = { removeLocalPhotos(current, photos) }) {
+                runWrite(onSuccess = { removePhotos(current, photos) }) {
                     boardRepository.deleteSymbol(current.ownerUid, boardId, pending.id)
                 }
             }
         }
     }
 
-    /** Photos of the deleted symbols are removed from this device only after the delete was accepted. */
+    /** Photos of the deleted symbols are removed (here and in the account) only after the delete was accepted. */
     private fun deleteBoard(current: Request, boardId: String) {
         runWrite {
             val symbolsResult = boardRepository.getSymbols(current.ownerUid, boardId)
             val photos = (symbolsResult as? DataResult.Success)?.value?.let(::photosOf).orEmpty()
             boardRepository.deleteBoard(current.ownerUid, boardId).also { result ->
                 if (result is DataResult.Success) {
-                    removeLocalPhotos(current, photos)
+                    removePhotos(current, photos)
                     if (selectedBoardId.value == boardId) onOpenBoard(null)
                 }
             }
         }
     }
 
-    private suspend fun removeLocalPhotos(current: Request, photos: List<StoredPhoto>) {
-        if (canUseDevicePhotos(current.viewer)) photos.forEach { photoStore.deleteEverywhere(current.ownerUid, it) }
+    private suspend fun removePhotos(current: Request, photos: List<StoredPhoto>) {
+        // Whoever may delete the symbols removes their photos too, so none is left counting in the owner's limit (R6).
+        if (canManageBoards(current.viewer)) photos.forEach { photoStore.deleteEverywhere(current.ownerUid, it) }
     }
 
     private fun photosOf(symbols: List<AacSymbol>) =

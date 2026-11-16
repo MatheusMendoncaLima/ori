@@ -213,6 +213,15 @@ service cloud.firestore {
           return isPrimaryUserOwner(uid) && resource.data.createdBy == uid;
         }
 
+        // A day of a series the owner made, even if a caregiver marked it (and so authored its document): the owner
+        // removes it together with the series, before the series goes (R5).
+        function isDayOfOwnSeries() {
+          return isPrimaryUserOwner(uid)
+            && taskId.matches('^.+__[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+            && get(/databases/$(database)/documents/users/$(uid)/routineSeries/$(
+              taskId.replace('__[0-9]{4}-[0-9]{2}-[0-9]{2}$', ''))).data.createdBy == uid;
+        }
+
         function caregiverManagesVisibleTask() {
           return caregiverHasPermission(uid, 'manageRoutines')
             && resource.data.status != 'hidden_from_caregiver';
@@ -248,7 +257,8 @@ service cloud.firestore {
 
         // Deleting follows the same ownership as editing. While the owner deletes the account (LGPD art. 18),
         // the activities a caregiver reserved go too.
-        allow delete: if isOwnActivityOfOwner() || caregiverManagesVisibleTask() || isDeletingAccount(uid);
+        allow delete: if isOwnActivityOfOwner() || isDayOfOwnSeries() || caregiverManagesVisibleTask()
+          || isDeletingAccount(uid);
       }
 
       // ---------- Repeating activities ----------
@@ -333,7 +343,10 @@ service cloud.firestore {
         // Lists exist only so the app can count against its limit of 100 photos per person.
         allow list: if isPrimaryUserOwner(uid) && request.query.limit <= 101;
         allow create, update: if isPrimaryUserOwner(uid) && isValidPhoto(request.resource.data);
-        allow delete: if isPrimaryUserOwner(uid);
+        // Whoever manages the boards removes the photos of the symbols they delete or change (R6): they may already
+        // remove or change those symbols. The profile photo is the owner's only.
+        allow delete: if isPrimaryUserOwner(uid)
+          || (photoId != 'profile.jpg' && caregiverHasPermission(uid, 'manageCommunication'));
       }
 
       // ---------- Preferences ----------

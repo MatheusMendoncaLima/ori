@@ -30,33 +30,6 @@ As regras negam por padrão, e cada coleção tem dono e limites.
 
 ## 1. Falhas de comportamento
 
-### R5. Excluir uma série cujo dia foi marcado por quem acompanha (média-baixa)
-
-- **Onde:** `RepeatingRoutineRepository.kt:149` e `firestore.rules` (`routineTasks`, `delete`).
-- **O que acontece:**
-  - Quando quem acompanha marca um dia como feito, o documento desse dia tem `createdBy` = quem acompanha.
-  - Se a dona da rotina exclui a série olhando para esse dia, a série é apagada, mas o documento do dia não pode ser apagado por ela (regra de autoria).
-  - A tela mostra erro, embora a série já tenha sumido.
-- **Correção:** criar o documento do dia sempre com o autor da série, ou deixar a dona apagar documentos de dias das próprias séries (regra com teste no emulador).
-
-### R6. Fotos de símbolos apagados por quem acompanha ficam na conta (média-baixa)
-
-- **Onde:** `ui/app/screens/aac/AacOrganizeViewModel.kt:216` (`removeLocalPhotos`) e a regra de `photos` (`delete` só da dona).
-- **O que acontece:**
-  - Quem acompanha pode apagar símbolos e pranchas, mas não as fotos deles.
-  - Os documentos de foto ficam na conta da pessoa e contam no limite de 100 fotos.
-  - Ninguém sabe que estão lá.
-- **Correção:** apagar fotos órfãs quando a dona abrir a área de organizar (comparando as fotos com os símbolos), ou permitir a quem tem `manageCommunication` apagar fotos que nenhum símbolo usa (com teste).
-
-### R7. Apagar uma prancha sem conexão pode deixar símbolos no servidor (baixa-média)
-
-- **Onde:** `data/aac/FirestoreAacBoardRepository.kt:95`.
-- **O que acontece:**
-  - Para apagar, o app primeiro lê os símbolos. Sem conexão, a leitura vem do cache.
-  - Símbolos que nunca foram lidos neste aparelho não entram no lote.
-  - Eles ficam no servidor, debaixo de uma prancha que não existe.
-- **Correção:** só apagar uma prancha com a lista de símbolos confirmada pelo servidor; sem conexão, avisar que precisa de internet. Ou apagar no servidor (Cloud Function), quando houver o plano Blaze.
-
 ### R8. No limite de fotos, trocar uma foto existente é recusado (baixa)
 
 - **Onde:** `data/photos/FirestoreCloudPhotoRepository.kt:74` (`isAtPhotoLimit`).
@@ -353,6 +326,16 @@ Ficaram dois, que mudam dados guardados ou a arquitetura e pedem uma decisão an
 - **Teste:** em `RepeatingRoutineRepositoryTest`, "after a series is deleted only its days marked as done stay, as history", no dia e na leitura de vários dias. Sem a correção, o dia desmarcado voltava.
 - **Não verificado:** no aparelho.
 - **Limitação:** os documentos desses dias continuam no banco. Ocupam pouco, mas contam no limite de 100 atividades por dia.
+
+### R5, R6 e R7. Vínculo e comunicação — corrigidas em 15/11/2026
+
+As regras de R5 e R6 foram publicadas no `oriteam-ori` em 15/11/2026.
+
+| Item | O que acontecia | Correção | Teste |
+|---|---|---|---|
+| R5 | Ao excluir "todos os dias" de uma série, um dia marcado por quem acompanha (autor do documento do dia) não podia ser apagado pela dona: a série sumia e a tela mostrava erro | Regra `isDayOfOwnSeries`: a dona apaga o dia de uma série dela, enquanto a série existe. O app apaga o dia **antes** da série; se o dia for recusado, a série fica | `routine.test.mjs` ("the owner removes a day a caregiver marked…", falha sem a regra e sem a conferência do autor da série); `RepeatingRoutineRepositoryTest` ("deleting all days removes the day's document before the series…", falha com a ordem antiga) |
+| R6 | Quem acompanha apagava símbolos, mas as fotos deles ficavam na conta da pessoa, contando no limite de 100 | Quem tem `manageCommunication` apaga fotos de símbolos (nunca a do perfil), e o app apaga a foto junto com o símbolo ou a prancha | `photos.test.mjs` (apaga a do símbolo, não a do perfil; sem permissão, não apaga); `AacOrganizeViewModelTest` ("a caregiver with permission removes the photo of a symbol they delete…") |
+| R7 | Sem conexão, apagar uma prancha lia os símbolos do cache e podia deixar no servidor os que este aparelho nunca leu | A lista dos símbolos vem do servidor (`Source.SERVER`); sem conexão, a exclusão para com "Sem conexão" | Sem teste automático: depende do Firestore real. Conferido no código |
 
 ### Desempenho das animações (M1, M3–M6, M8, M9, M11–M13) — corrigidas em 07/11/2026
 

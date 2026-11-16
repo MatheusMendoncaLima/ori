@@ -3,6 +3,7 @@ package com.oriteam.ori.data.aac
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
 import com.google.firebase.firestore.WriteBatch
 import com.oriteam.ori.data.firestore.FirestoreSchema
 import com.oriteam.ori.data.firestore.awaitWriteAcknowledgement
@@ -94,7 +95,10 @@ class FirestoreAacBoardRepository @Inject constructor(
      * The app never stores more than [MAX_SYMBOLS_PER_BOARD] symbols, so one read covers them.
      */
     override suspend fun deleteBoard(ownerUid: String, boardId: String): DataResult<WriteStatus> {
-        val symbols = runDataOperation { symbolsQuery(ownerUid, boardId).get().await().documents }
+        // The list must come from the server: offline, the cache may miss symbols never read on this device, and
+        // they would stay on the server under a board that no longer exists (R7). Offline, this fails as "no
+        // connection".
+        val symbols = runDataOperation { symbolsQuery(ownerUid, boardId).get(Source.SERVER).await().documents }
         if (symbols is DataResult.Failure) return symbols
         return write {
             (symbols as DataResult.Success).value.forEach { delete(it.reference) }

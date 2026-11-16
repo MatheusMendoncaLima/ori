@@ -151,12 +151,22 @@ class RepeatingRoutineRepository(
      */
     override suspend fun delete(ownerUid: String, task: RoutineTask, scope: DeleteScope): DataResult<WriteStatus> {
         val repeat = task.repeat ?: return tasks.deleteActivity(ownerUid, task.id)
-        val removal = when (scope) {
+        return when (scope) {
             DeleteScope.THIS_DAY -> series.skipDate(ownerUid, repeat.seriesId, task.date)
-            DeleteScope.ALL_DAYS -> series.deleteSeries(ownerUid, repeat.seriesId)
+                .thenWrite { deleteStoredDay(ownerUid, task) }
+            // The day goes first: the rules let the owner remove a day a caregiver marked only while its series
+            // still exists (R5). Otherwise the series went and an error showed for a day that could not go.
+            DeleteScope.ALL_DAYS -> deleteStoredDay(ownerUid, task)
+                .thenWrite { series.deleteSeries(ownerUid, repeat.seriesId) }
         }
-        return if (repeat.isStored) removal.thenWrite { tasks.deleteActivity(ownerUid, task.id) } else removal
     }
+
+    private suspend fun deleteStoredDay(ownerUid: String, task: RoutineTask): DataResult<WriteStatus> =
+        if (task.repeat?.isStored == true) {
+            tasks.deleteActivity(ownerUid, task.id)
+        } else {
+            DataResult.Success(WriteStatus.SYNCED)
+        }
 
     private inline fun DataResult<WriteStatus>.thenWrite(next: () -> DataResult<WriteStatus>) =
         if (this is DataResult.Success) next() else this

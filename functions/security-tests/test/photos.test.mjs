@@ -86,7 +86,7 @@ describe("photos", () => {
     );
   });
 
-  it("a caregiver who manages the boards sees symbol photos only, and changes nothing", async () => {
+  it("a caregiver who manages the boards sees symbol photos and removes them, never adds or touches the profile (R6)", async () => {
     await testEnv().withSecurityRulesDisabled(async (context) => {
       await setDoc(
         doc(context.firestore(), `careLinks/${CAREGIVER}_${PRIMARY}`),
@@ -103,14 +103,22 @@ describe("photos", () => {
     await assertSucceeds(getDoc(doc(db, path("abc-123.jpg"))));
     await assertFails(getDoc(doc(db, path("profile.jpg"))));
     await assertFails(setDoc(doc(db, path("new.jpg")), photo()));
-    await assertFails(deleteDoc(doc(db, path("abc-123.jpg"))));
+    await assertFails(deleteDoc(doc(db, path("profile.jpg"))));
+    await assertSucceeds(deleteDoc(doc(db, path("abc-123.jpg"))));
     await assertFails(
       getDocs(query(collection(db, `users/${PRIMARY}/photos`), limit(10))),
     );
   });
 
-  it("without permission or link, no photo is visible", async () => {
+  it("without permission or link, no photo is visible or removed", async () => {
     await seed("abc-123.jpg");
+    for (const uid of [
+      VIEW_ONLY_CAREGIVER,
+      UNLINKED_CAREGIVER,
+      OTHER_PRIMARY,
+    ]) {
+      await assertFails(deleteDoc(doc(dbAs(uid), path("abc-123.jpg"))));
+    }
     await assertFails(getDoc(doc(dbAs(VIEW_ONLY_CAREGIVER), path())));
     await assertFails(getDoc(doc(dbAs(UNLINKED_CAREGIVER), path())));
     await assertFails(getDoc(doc(dbAs(OTHER_PRIMARY), path())));

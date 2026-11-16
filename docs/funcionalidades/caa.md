@@ -300,7 +300,9 @@ sequenceDiagram
 - **Excluir prancha:**
   - Pede confirmação.
   - Lê os símbolos e exclui tudo num lote: nenhum símbolo fica sem prancha.
-  - Depois que a exclusão é aceita, apaga as fotos desses símbolos deste aparelho.
+  - Depois que a exclusão é aceita, apaga as fotos desses símbolos deste aparelho e da conta. Quem acompanha com
+    `manageCommunication` também apaga, para nenhuma foto ficar na conta contando no limite (R6, 15/11/2026).
+  - A lista dos símbolos de uma prancha apagada vem do servidor; sem conexão, a exclusão para com "Sem conexão" (R7).
 - **Editor de símbolo** (`SymbolEditorViewModel`):
   - **Campos:** rótulo, frase falada (opcional) e imagem (emoji sugerido ou digitado,
     foto ou nenhuma).
@@ -391,7 +393,7 @@ cd functions/security-tests && npm test
 | **Operações** | `AacDomainTest` (mensagem, validação, duplicatas, limites, ordem); `AacOrganizeViewModelTest` (ordenar só o que muda, criar/renomear prancha, excluir com confirmação); `SymbolEditorViewModelTest` (criar no fim da prancha, duplicata, toque duplo, rascunho e id após reinício; um formulário fechado com o voltar do sistema abre de novo vazio e apaga a foto que tinha importado); `AacCommunicateViewModelTest` (três modos de toque, remover pedaços, salvar, prancha sugerida uma vez; um toque com a voz ainda ligando é falado quando ela fica pronta; a voz que não liga dá lugar às letras grandes; a prancha em outro idioma fala, monta e salva nele; uma frase falada com o volume no zero avisa, "Aumentar o volume" sobe e tira o aviso, ele some ao fechar ou quando um texto é ouvido, não aparece sem voz e é conferido também na frase que esperava a voz ligar); `AacDocumentMappingTest`; `DataStoreAacPreferencesRepositoryTest` |
 | **Estados acessíveis** | `AacScreenTest` (símbolo como um botão com rótulo e ação, rótulo oculto ainda lido, região viva da mensagem, botões de mover com nome, aviso de voz indisponível, aviso de volume no zero com os dois botões, sem pranchas ainda dá para escrever); `AacMessageBarTest` (ações em uma linha, "Falar" vira "Parar", menu "Mais", ações desabilitadas sem mensagem, campo abre com foco e anuncia o estado, texto digitado não se perde, texto ampliado não quebra palavra) |
 | **Grade adaptável** | `AacGridSpecTest` (colunas pela largura real da grade em cada tamanho e escala de texto); `AacBoardLayoutTest` (três linhas inteiras de símbolos num celular comum, símbolos parados enquanto a mensagem cresce, pedaço mais novo visível, barra limitada com texto ampliado, opções sem pranchas visíveis, rótulo centralizado, celular deitado); `AacScreenTest` (mais colunas em área larga, menos com texto ampliado); `FeatureComponentsTest` (mensagem ao lado no celular deitado) |
-| **Permissões** | `AacDomainTest`; `AacOrganizeViewModelTest` (responsável sem permissão não grava nada; com permissão não apaga fotos); `SymbolEditorViewModelTest` (responsável não adiciona foto); `AacScreenTest` (organizador sem permissão não oferece mudanças); emulador: 15 testes (dono, responsável com/sem permissão, vínculo antigo e revogado, frases privadas, formato da imagem, prancha inexistente, limites, autoria, concessão da permissão) |
+| **Permissões** | `AacDomainTest`; `AacOrganizeViewModelTest` (responsável sem permissão não grava nada; com permissão apaga as fotos dos símbolos que apaga); `SymbolEditorViewModelTest` (responsável não adiciona foto); `AacScreenTest` (organizador sem permissão não oferece mudanças); emulador: 15 testes (dono, responsável com/sem permissão, vínculo antigo e revogado, frases privadas, formato da imagem, prancha inexistente, limites, autoria, concessão da permissão) |
 | **Falhas de armazenamento** | `DevicePhotoStoreTest` (imagem ilegível, pasta bloqueada → nenhuma foto quebrada, redução real para 512 px, nomes inseguros); `SymbolEditorViewModelTest` (falha de rede mantém o formulário, foto ilegível/sem espaço explicada); `AacCommunicateViewModelTest` (falha ao salvar mantém a mensagem; gravação offline) ; `AacOrganizeViewModelTest` (exclusão que falha mantém as fotos) |
 
 Para conferir que os testes pegam falhas reais, fiz mutações temporárias, desfeitas logo
@@ -496,7 +498,7 @@ vista solta o teclado.
 - Sem conta, pranchas e frases salvas ficam no aparelho. Veja [uso-local.md](uso-local.md).
 - Cada uso de "Falar" soma 1 na contagem do dia para os Relatórios. Essa contagem não guarda o que foi dito e não sai do aparelho.
 
-**Fotos de símbolos:** com conta, ficam salvas nela e aparecem nos outros aparelhos, no aparelho do responsável que gerencia as pranchas inclusive. Só a pessoa pode adicioná-las. Limites em [dados.md](../dados.md#fotos).
+**Fotos de símbolos:** com conta, ficam salvas nela e aparecem nos outros aparelhos, no aparelho do responsável que gerencia as pranchas inclusive. Só a pessoa pode adicioná-las; quem organiza as pranchas apaga as dos símbolos que apaga ou troca. Limites em [dados.md](../dados.md#fotos).
 
 ## Mudanças de 03/11/2026 (fim da lista de revisão)
 

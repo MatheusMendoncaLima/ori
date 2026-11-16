@@ -180,6 +180,36 @@ describe("repeating activities", () => {
     await assertFails(setDoc(doc(dbAs(PRIMARY), path), series(CAREGIVER)));
   });
 
+  it("the owner removes a day a caregiver marked, only in a series of her own and before it goes (R5)", async () => {
+    const day = (seriesId) =>
+      `users/${PRIMARY}/routineTasks/${seriesId}__2026-11-04`;
+    await seed();
+    await testEnv().withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, `users/${PRIMARY}/routineSeries/s2`), {
+        ...stored(),
+        createdBy: CAREGIVER,
+      });
+      for (const seriesId of ["s1", "s2", "gone"]) {
+        await setDoc(
+          doc(db, day(seriesId)),
+          task({ date: "2026-11-04", isDone: true, completedBy: CAREGIVER }),
+        );
+      }
+    });
+    const db = dbAs(PRIMARY);
+    await assertSucceeds(deleteDoc(doc(db, day("s1"))));
+    // The caregiver's series, and a series that no longer exists, keep the caregiver's day.
+    await assertFails(deleteDoc(doc(db, day("s2"))));
+    await assertFails(deleteDoc(doc(db, day("gone"))));
+    // Someone else cannot use it.
+    await seed();
+    await testEnv().withSecurityRulesDisabled((context) =>
+      setDoc(doc(context.firestore(), day("s1")), task({ date: "2026-11-04" })),
+    );
+    await assertFails(deleteDoc(doc(dbAs(OTHER_PRIMARY), day("s1"))));
+  });
+
   it("an activity becomes a series, and back, in one batch", async () => {
     const db = dbAs(PRIMARY);
     const task = doc(db, `users/${PRIMARY}/routineTasks/s1`);

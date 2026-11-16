@@ -251,6 +251,26 @@ class RepeatingRoutineRepositoryTest {
     }
 
     @Test
+    fun `deleting all days removes the day's document before the series, and keeps the series if it cannot`() =
+        runTest {
+            val stored = everyMonday().occurrenceOn(monday, stored = true)
+
+            repository.delete(OWNER, stored, DeleteScope.ALL_DAYS)
+            assertEquals("delete", tasks.writes.single().operation)
+            assertEquals(listOf("delete s1"), rules.log)
+
+            // The rules check the series to let the owner remove a day a caregiver marked (R5): a refused day
+            // leaves the series in place, instead of removing it and showing an error.
+            tasks.writes.clear()
+            rules.log.clear()
+            tasks.writeResult = DataResult.Failure(DataError.PERMISSION_DENIED)
+            val result = repository.delete(OWNER, stored, DeleteScope.ALL_DAYS)
+
+            assertEquals(DataResult.Failure(DataError.PERMISSION_DENIED), result)
+            assertTrue(rules.log.isEmpty())
+        }
+
+    @Test
     fun `reading many days reads the rules once and includes them`() = runTest {
         rules.series.value = DataResult.Success(listOf(everyMonday()))
 

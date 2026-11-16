@@ -216,7 +216,7 @@ class AacOrganizeViewModelTest {
     }
 
     @Test
-    fun `a caregiver with permission organizes but never deletes photos on their device`() = runTest {
+    fun `a caregiver with permission removes the photo of a symbol they delete, but adds none`() = runTest {
         val viewModel = organizer(viewer = communicationManager)
         viewModel.onOpenBoard("b1")
 
@@ -224,7 +224,8 @@ class AacOrganizeViewModelTest {
         viewModel.onDeleteConfirm()
 
         assertEquals(listOf(AacWrite("deleteSymbol", "s2")), boards.writes)
-        assertTrue(photos.deleted.isEmpty())
+        // R6: otherwise the photo stayed in the owner's account, counting in the limit, with no symbol using it.
+        assertEquals(listOf(photo.photo), photos.deletedFromAccount)
         assertTrue(viewModel.uiState.value.canManage)
         assertFalse(viewModel.uiState.value.canUsePhotos)
     }
