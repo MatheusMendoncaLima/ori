@@ -33,25 +33,6 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
-data class ActivityEditorUiState(
-    val titleInput: String = "",
-    val timeInput: String = "",
-    val descriptionInput: String = "",
-    /** Null until [ActivityEditorViewModel.start] opens the form: there is no day to show before that. */
-    val date: LocalDate? = null,
-    /** Null: only on [date]. Otherwise [date] is the first day. */
-    val repeat: RepeatRule? = null,
-    val ownerCanComplete: Boolean = true,
-    val isHiddenFromCaregiver: Boolean = false,
-    /** Without an account there is no caregiver to hide anything from. */
-    val isLocalOwner: Boolean = false,
-    val isNew: Boolean = true,
-    /** The primary user sees "hide from caregiver"; the caregiver sees "may be completed by the user". */
-    val isEditedByOwner: Boolean = true,
-    val isSaving: Boolean = false,
-    @StringRes val errorMessageRes: Int? = null
-)
-
 /** Every form field lives in the SavedStateHandle, so a draft survives process death. */
 private object EditorKeys {
     const val ACTIVITY_ID = "editor_activity_id"
@@ -95,6 +76,9 @@ class ActivityEditorViewModel @Inject constructor(
     private var ownerUid: String? = null
     private var viewer: RoutineViewer = RoutineViewer.Owner
 
+    /** The form as this opening started, to tell whether anything changed; null after the process was recreated. */
+    private var openedForm: ActivityEditorUiState? = null
+
     /**
      * Opens the form for [existing] or for a new activity on [defaultDate]. The draft of the same [opening]
      * (after rotation or process death) is kept instead of being reset. A draft of another opening was left
@@ -137,6 +121,8 @@ class ActivityEditorViewModel @Inject constructor(
                 isLocalOwner = ownerUid == LOCAL_OWNER_UID
             )
         }
+        openedForm = _uiState.value
+        _uiState.update { it.copy(hasChanges = false) }
     }
 
     fun onTitleChange(value: String) = updateForm { it.copy(titleInput = value, errorMessageRes = null) }
@@ -252,7 +238,7 @@ class ActivityEditorViewModel @Inject constructor(
     }
 
     private fun updateForm(transform: (ActivityEditorUiState) -> ActivityEditorUiState) {
-        val updated = transform(_uiState.value)
+        val updated = transform(_uiState.value).let { it.copy(hasChanges = it.differsFrom(openedForm)) }
         _uiState.value = updated
         savedStateHandle[EditorKeys.TITLE] = updated.titleInput
         savedStateHandle[EditorKeys.TIME] = updated.timeInput
@@ -274,7 +260,9 @@ class ActivityEditorViewModel @Inject constructor(
             repeat = repeatRuleFromStoredText(savedStateHandle[EditorKeys.REPEAT]),
             ownerCanComplete = savedStateHandle[EditorKeys.OWNER_CAN_COMPLETE] ?: true,
             isHiddenFromCaregiver = savedStateHandle[EditorKeys.HIDDEN] ?: false,
-            isNew = savedStateHandle[EditorKeys.IS_NEW] ?: true
+            isNew = savedStateHandle[EditorKeys.IS_NEW] ?: true,
+            // What the form opened with is gone with the process: leaving asks, to be safe.
+            hasChanges = true
         )
     }
 }

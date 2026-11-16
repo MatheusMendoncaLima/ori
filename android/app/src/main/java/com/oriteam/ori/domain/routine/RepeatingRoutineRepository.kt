@@ -146,8 +146,9 @@ class RepeatingRoutineRepository(
 
     /**
      * Removing all the days keeps the ones already marked as done, because they are the history in the
-     * reports. Only the document of the day being looked at goes away with the series. The other days that
-     * have a document but are not done stay stored, and [merged] leaves them out.
+     * reports, also the day being looked at (G2: it went with the series, and the report lost it). A day being
+     * looked at that has a document but is not done goes with the series; the other ones stay stored, and
+     * [merged] leaves them out.
      */
     override suspend fun delete(ownerUid: String, task: RoutineTask, scope: DeleteScope): DataResult<WriteStatus> {
         val repeat = task.repeat ?: return tasks.deleteActivity(ownerUid, task.id)
@@ -156,10 +157,13 @@ class RepeatingRoutineRepository(
                 .thenWrite { deleteStoredDay(ownerUid, task) }
             // The day goes first: the rules let the owner remove a day a caregiver marked only while its series
             // still exists (R5). Otherwise the series went and an error showed for a day that could not go.
-            DeleteScope.ALL_DAYS -> deleteStoredDay(ownerUid, task)
+            DeleteScope.ALL_DAYS -> deleteDayUnlessHistory(ownerUid, task)
                 .thenWrite { series.deleteSeries(ownerUid, repeat.seriesId) }
         }
     }
+
+    private suspend fun deleteDayUnlessHistory(ownerUid: String, task: RoutineTask): DataResult<WriteStatus> =
+        if (task.isDone) DataResult.Success(WriteStatus.SYNCED) else deleteStoredDay(ownerUid, task)
 
     private suspend fun deleteStoredDay(ownerUid: String, task: RoutineTask): DataResult<WriteStatus> =
         if (task.repeat?.isStored == true) {

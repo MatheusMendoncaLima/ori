@@ -3,14 +3,9 @@ package com.oriteam.ori.ui.app.screens.aac
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +23,7 @@ import com.oriteam.ori.ui.adaptive.CenteredContent
 import com.oriteam.ori.ui.adaptive.FillOrScrollColumn
 import com.oriteam.ori.ui.components.form.EqualWidthRow
 import com.oriteam.ori.ui.components.form.FormActionBar
+import com.oriteam.ori.ui.components.form.FormLayout
 import com.oriteam.ori.ui.components.form.FormMessage
 import com.oriteam.ori.ui.components.form.FormMessageType
 import com.oriteam.ori.ui.components.form.LabeledTextField
@@ -65,12 +61,23 @@ fun SymbolEditorScreen(state: SymbolEditorUiState, actions: SymbolEditorActions)
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         uri?.let { actions.onPhotoPicked(it.toString()) }
     }
-    Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.ime)) {
-        OriTopBar(
-            maxWidth = OriDimensions.FormMaxWidth,
-            title = stringResource(if (state.isNew) R.string.aac_new_symbol else R.string.aac_edit_symbol),
-            onNavigateBack = actions.onClose
-        )
+    FormLayout(
+        topBar = {
+            OriTopBar(
+                maxWidth = OriDimensions.FormMaxWidth,
+                title = stringResource(if (state.isNew) R.string.aac_new_symbol else R.string.aac_edit_symbol),
+                onNavigateBack = actions.onClose
+            )
+        },
+        actionBar = {
+            FormActionBar(
+                saveLabel = stringResource(R.string.aac_save_symbol),
+                isSaving = state.isSaving,
+                onSave = actions.onSave,
+                onCancel = actions.onClose
+            )
+        }
+    ) {
         FillOrScrollColumn(modifier = Modifier.weight(1f)) {
             CenteredContent(maxWidth = OriDimensions.FormMaxWidth) {
                 LabeledTextField(
@@ -131,12 +138,6 @@ fun SymbolEditorScreen(state: SymbolEditorUiState, actions: SymbolEditorActions)
                 Spacer(modifier = Modifier.height(OriSpacing.Large))
             }
         }
-        FormActionBar(
-            saveLabel = stringResource(R.string.aac_save_symbol),
-            isSaving = state.isSaving,
-            onSave = actions.onSave,
-            onCancel = actions.onClose
-        )
     }
 }
 

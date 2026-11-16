@@ -271,6 +271,17 @@ class RepeatingRoutineRepositoryTest {
         }
 
     @Test
+    fun `deleting all days while looking at a day already done keeps that day as history`() = runTest {
+        val doneDay = everyMonday().occurrenceOn(monday, isDone = true, stored = true)
+
+        repository.delete(OWNER, doneDay, DeleteScope.ALL_DAYS)
+
+        // G2: the report lost the day, because its document went with the series.
+        assertTrue(tasks.writes.isEmpty())
+        assertEquals(listOf("delete s1"), rules.log)
+    }
+
+    @Test
     fun `reading many days reads the rules once and includes them`() = runTest {
         rules.series.value = DataResult.Success(listOf(everyMonday()))
 

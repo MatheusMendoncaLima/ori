@@ -27,6 +27,10 @@
     <string name="error_action_not_possible">This cannot be done right now</string>
     <string name="error_missing_profile_name">Enter your name</string>
     <string name="action_cancel">Cancel</string>
+    <string name="form_discard_title">Discard your changes?</string>
+    <string name="form_discard_message">What you wrote here will be lost.</string>
+    <string name="form_discard_confirm">Discard</string>
+    <string name="form_keep_editing">Keep editing</string>
     <string name="main_my_routine">My routine</string>
     <string name="main_care_recipients">People I support</string>
     <string name="sync_showing_saved_data">No connection. Showing the last version saved on this device.</string>

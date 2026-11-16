@@ -27,6 +27,10 @@
     <string name="error_action_not_possible">No se puede hacer esto ahora</string>
     <string name="error_missing_profile_name">Escribe tu nombre</string>
     <string name="action_cancel">Cancelar</string>
+    <string name="form_discard_title">¿Descartar los cambios?</string>
+    <string name="form_discard_message">Lo que escribiste aquí se perderá.</string>
+    <string name="form_discard_confirm">Descartar</string>
+    <string name="form_keep_editing">Seguir editando</string>
     <string name="main_my_routine">Mi rutina</string>
     <string name="main_care_recipients">Personas que acompaño</string>
     <string name="sync_showing_saved_data">Sin conexión. Se muestra la última versión guardada en este dispositivo.</string>

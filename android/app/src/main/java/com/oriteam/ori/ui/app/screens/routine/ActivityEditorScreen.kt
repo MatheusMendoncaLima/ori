@@ -1,12 +1,7 @@
 package com.oriteam.ori.ui.app.screens.routine
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
@@ -25,10 +20,12 @@ import com.oriteam.ori.domain.routine.RoutineViewer
 import com.oriteam.ori.ui.adaptive.CenteredContent
 import com.oriteam.ori.ui.adaptive.FillOrScrollColumn
 import com.oriteam.ori.ui.components.form.FormActionBar
+import com.oriteam.ori.ui.components.form.FormLayout
 import com.oriteam.ori.ui.components.form.FormMessage
 import com.oriteam.ori.ui.components.form.FormMessageType
 import com.oriteam.ori.ui.components.form.LabeledTextField
 import com.oriteam.ori.ui.components.form.rememberFormOpening
+import com.oriteam.ori.ui.components.form.rememberLeaveWithConfirmation
 import com.oriteam.ori.ui.components.list.SectionHeader
 import com.oriteam.ori.ui.components.navigation.OriTopBar
 import com.oriteam.ori.ui.components.settings.SettingsSwitchItem
@@ -96,16 +93,24 @@ fun ActivityEditorScreen(
 ) {
     // The form gets its date when the ViewModel starts; before that there is nothing to draw.
     val date = state.date ?: return
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.ime)
+    val leave = rememberLeaveWithConfirmation(hasChanges = state.hasChanges, onLeave = onClose)
+    FormLayout(
+        topBar = {
+            OriTopBar(
+                maxWidth = OriDimensions.FormMaxWidth,
+                title = stringResource(if (state.isNew) R.string.activity_new_title else R.string.activity_edit_title),
+                onNavigateBack = leave
+            )
+        },
+        actionBar = {
+            FormActionBar(
+                saveLabel = stringResource(R.string.activity_save),
+                isSaving = state.isSaving,
+                onSave = onSave,
+                onCancel = leave
+            )
+        }
     ) {
-        OriTopBar(
-            maxWidth = OriDimensions.FormMaxWidth,
-            title = stringResource(if (state.isNew) R.string.activity_new_title else R.string.activity_edit_title),
-            onNavigateBack = onClose
-        )
         FillOrScrollColumn(modifier = Modifier.weight(1f)) {
             CenteredContent(maxWidth = OriDimensions.FormMaxWidth) {
                 // Named, because beside the list there is another calendar, which only chooses the day shown.
@@ -159,11 +164,5 @@ fun ActivityEditorScreen(
                 Spacer(modifier = Modifier.height(OriSpacing.Large))
             }
         }
-        FormActionBar(
-            saveLabel = stringResource(R.string.activity_save),
-            isSaving = state.isSaving,
-            onSave = onSave,
-            onCancel = onClose
-        )
     }
 }

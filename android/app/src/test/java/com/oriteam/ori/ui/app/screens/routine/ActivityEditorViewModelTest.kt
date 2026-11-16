@@ -67,6 +67,33 @@ class ActivityEditorViewModelTest {
     }
 
     @Test
+    fun `a form that opened untouched has no changes, and typing back what was there has none again`() {
+        val viewModel = editor(existing = activity("own", title = "Ler", createdBy = OWNER))
+        assertFalse(viewModel.uiState.value.hasChanges)
+
+        viewModel.onTitleChange("Ler mais")
+        assertTrue(viewModel.uiState.value.hasChanges)
+
+        viewModel.onTitleChange("Ler")
+        assertFalse(viewModel.uiState.value.hasChanges)
+
+        viewModel.onRepeatChange(RepeatRule.EveryDay)
+        assertTrue(viewModel.uiState.value.hasChanges)
+    }
+
+    @Test
+    fun `a draft that came back after the app was closed by the system counts as changed`() {
+        val savedState = SavedStateHandle()
+        editor(savedState = savedState).onTitleChange("Tomar café")
+
+        // A new ViewModel with the same saved state is what the system gives after closing the app.
+        val restored = editor(savedState = savedState)
+
+        assertEquals("Tomar café", restored.uiState.value.titleInput)
+        assertTrue(restored.uiState.value.hasChanges)
+    }
+
+    @Test
     fun `a repeating activity is reported without a day, because it falls on many`() = runTest {
         val viewModel = editor()
         viewModel.onTitleChange("Terapia")
