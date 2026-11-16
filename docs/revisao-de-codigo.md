@@ -157,8 +157,8 @@ As regras negam por padrão, e cada coleção tem dono e limites.
 
 | Id | Onde | O problema | Correção |
 |---|---|---|---|
-| S1 | `functions/functions/src/index.ts` | Sem App Check e sem limite de tentativas nos convites (só `maxInstances: 10`). Adivinhar um código é impraticável (32⁸ combinações, 24 h de validade), mas nada impede criar convites sem parar | App Check nas funções e um limite de convites abertos por pessoa |
-| S2 | `invitations/{code}` | Convites usados ou vencidos nunca são apagados | Política de TTL do Firestore no campo `expiresAt` |
+| S1 | Convites (`firestore.rules`, `invitations`) | Sem App Check. Desde 15/11/2026, cada pessoa tem um código por vez e espera 30 s para gerar outro (regra com teste), e adivinhar um código continua impraticável (32⁸ combinações, 24 h de validade) | App Check no Firestore |
+| S2 | `invitations/{code}` | Convites usados ou vencidos ficam no banco (um código novo já apaga o anterior da mesma pessoa) | Política de TTL do Firestore no campo `expiresAt`, no console (passo em [perfis-e-permissoes.md](funcionalidades/perfis-e-permissoes.md#como-publicar)) |
 | S3 | `careInvitations.ts:222` | Os nomes guardados no vínculo são copiados quando ele é criado e não acompanham uma troca de nome | Documentar (feito em [perfil-e-conta.md](funcionalidades/perfil-e-conta.md)) ou atualizar numa Cloud Function |
 | S4 | Projeto `oriteam-ori` | Há um índice `routineTasks (status, scheduledTime)` publicado que não está em `firestore.indexes.json` e que o app não usa. Ele só encarece as gravações | Apagar no console, ou publicar o arquivo com `--force` |
 
@@ -586,9 +586,9 @@ itens foram corrigidos no mesmo dia; as regras que ficaram estão em
   não um analisador: palavras fora dela ficam como foram tocadas).
 - **N8. Classificar palavras novas para a gramática** — feito em 09/11/2026: a pessoa escolhe o "Tipo de palavra" no
   formulário do símbolo; sem escolha, valem as tabelas.
-- **N9. "Gerar código de convite" mostrava "Código não encontrado"** — mensagem corrigida em 09/11/2026 (causa: as
-  funções não publicadas; veja [perfis-e-permissoes.md](funcionalidades/perfis-e-permissoes.md#erro-do-código-de-convite-09112026)).
-  Os convites só funcionam depois de publicar as funções (Blaze) ou de reescrevê-los sem funções.
+- **N9. "Gerar código de convite" não funcionava** — corrigido em 15/11/2026: os convites são feitos pelo app e
+  conferidos pelas regras, sem Cloud Functions ([perfis-e-permissoes.md](funcionalidades/perfis-e-permissoes.md#5-convites-o-app-grava-as-regras-conferem)).
+  Testes: `careInvitations.test.mjs` (emulador), `InvitationCodesTest` e `InvitationViewModelTest`. Regras publicadas em 15/11/2026.
 - **N10. Mais administração de acompanhados** — aberto: falta escolher quais funções (veja a seção 14, J3/J4: só com
   consentimento e visível para o acompanhado).
 

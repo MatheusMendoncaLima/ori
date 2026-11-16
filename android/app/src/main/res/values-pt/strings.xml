@@ -16,7 +16,6 @@
     <string name="error_network_unavailable">Sem conexão. Verifique sua internet e tente novamente</string>
     <string name="error_profile_update_failed">Sua conta foi criada, mas não foi possível salvar seu nome</string>
     <string name="error_unknown">Algo deu errado. Tente novamente</string>
-    <string name="error_service_unavailable">Este serviço ainda não está disponível. Tente mais tarde</string>
     <!-- Shared actions and states -->
     <string name="action_back">Voltar</string>
     <string name="action_retry">Tentar novamente</string>

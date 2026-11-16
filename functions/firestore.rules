@@ -14,7 +14,8 @@ rules_version = '2';
 //   users/{uid}/aacBoards/{boardId}      communication boards (and their /symbols)
 //   users/{uid}/aacSavedMessages/{id}    saved messages, private to the person
 //   careLinks/{caregiverUid_primaryUid}  link between a caregiver and a primary user
-//   invitations/{code}                   server only (Cloud Functions)
+//   invitations/{code}                   invitation code; accepted together with the link it creates
+//   invitationOwners/{uid}               the latest code of each person (one code at a time)
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -505,12 +506,47 @@ service cloud.firestore {
       allow get: if isLinkMember();
       allow list: if isLinkMember() && request.query.limit <= 50;
 
-      // Links are created only by the acceptInvitation Cloud Function, which validates
-      // the invitation code. Either person may remove a link once it has ended (it keeps their names).
-      allow create: if false;
+      // A link is created only by the person who accepts an invitation, in the same batch that marks the
+      // invitation as accepted by them (see /invitations): never by the caregiver, never without a valid code,
+      // and always with the least privilege. The names are the ones in the two profiles.
+      function isLinkFromInvitation(data) {
+        return isSignedIn()
+          && hasProfile(request.auth.uid)
+          && isInvitationCode(data.get('invitationCode', null))
+          && isLinkFromPendingInvitation(data, get(invitationPath(data.invitationCode)).data);
+      }
+
+      // Pending here keeps a code used before from starting a link again on its own; the invitation's rule checks
+      // that it has not expired.
+      function isLinkFromPendingInvitation(data, invitation) {
+        return invitation.status == 'pending'
+          && linkId == invitation.caregiverUid + '_' + request.auth.uid
+          && data.keys().hasOnly(['caregiverUid', 'primaryUserUid', 'caregiverName', 'primaryUserName',
+            'status', 'permissions', 'createdAt', 'revokedAt', 'invitationCode'])
+          && data.caregiverUid == invitation.caregiverUid
+          && data.primaryUserUid == request.auth.uid
+          && data.caregiverName == get(/databases/$(database)/documents/users/$(invitation.caregiverUid)).data.displayName
+          && data.primaryUserName == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName
+          && data.status == 'active'
+          && data.permissions == {'viewRoutines': true, 'manageRoutines': false, 'manageCommunication': false}
+          && data.createdAt == request.time
+          && data.revokedAt == null
+          && getAfter(invitationPath(data.invitationCode)).data.acceptedBy == request.auth.uid;
+      }
+
+      allow create: if isLinkFromInvitation(request.resource.data);
+
+      // Either person may remove a link once it has ended (it keeps their names).
       allow delete: if isLinkMember() && resource.data.status == 'revoked';
 
-      allow update: if isSignedIn() && resource.data.status == 'active' && (
+      allow update: if isSignedIn() && (
+          // Accepting a new invitation from the same caregiver is a new consent: an ended link starts again.
+          (resource.data.status == 'revoked' && isLinkFromInvitation(request.resource.data))
+          || (resource.data.status == 'active' && isActiveLinkChange())
+        );
+
+      function isActiveLinkChange() {
+        return (
           // Either person can revoke the link. Revocation is final.
           ((request.auth.uid == resource.data.caregiverUid
               || request.auth.uid == resource.data.primaryUserUid)
@@ -527,11 +563,79 @@ service cloud.firestore {
             // Links created before this permission existed may not have it.
             && request.resource.data.permissions.get('manageCommunication', false) is bool)
         );
+      }
     }
 
-    // Invitation codes are read and written only by Cloud Functions (Admin SDK).
+    // ---------- Invitations ----------
+
+    // The same alphabet as the app (no 0/O or 1/I): 32^8 codes, valid for 24 hours, so a code cannot be guessed.
+    function isInvitationCode(code) {
+      return code is string && code.matches('^[A-HJ-NP-Z2-9]{8}$');
+    }
+
+    function invitationPath(code) {
+      return /databases/$(database)/documents/invitations/$(code);
+    }
+
+    function invitationOwnerPath(uid) {
+      return /databases/$(database)/documents/invitationOwners/$(uid);
+    }
+
+    // A code the caregiver shares; the person who types it accepts it (with the link, in one batch).
     match /invitations/{code} {
-      allow read, write: if false;
+      // One invitation by its code, never a list: whoever has the code sees who invited.
+      allow get: if isSignedIn() && hasProfile(request.auth.uid);
+
+      // Created by the caregiver with the real name and a 24-hour life, together with the pointer to it.
+      allow create: if isPrimaryUserOwner(request.auth.uid)
+        && isInvitationCode(code)
+        && request.resource.data.keys().hasOnly(['caregiverUid', 'caregiverName', 'status', 'createdAt', 'expiresAt'])
+        && request.resource.data.keys().hasAll(['caregiverUid', 'caregiverName', 'status', 'createdAt', 'expiresAt'])
+        && request.resource.data.caregiverUid == request.auth.uid
+        && request.resource.data.caregiverName
+          == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time
+        // The code is valid for 24 hours from createdAt (server time); expiresAt is only for the TTL clean-up
+        // and the screen, so it may come from the device clock, within limits.
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.expiresAt <= request.time + duration.value(48, 'h')
+        && getAfter(invitationOwnerPath(request.auth.uid)).data.code == code;
+
+      // Accepted once, before it expires, by someone else, only the caregiver's latest code, and only together
+      // with the link it creates.
+      allow update: if isSignedIn()
+        && hasProfile(request.auth.uid)
+        && resource.data.status == 'pending'
+        && resource.data.createdAt + duration.value(24, 'h') > request.time
+        && resource.data.caregiverUid != request.auth.uid
+        && get(invitationOwnerPath(resource.data.caregiverUid)).data.code == code
+        && changesOnly(['status', 'acceptedBy', 'acceptedAt'])
+        && request.resource.data.status == 'accepted'
+        && request.resource.data.acceptedBy == request.auth.uid
+        && request.resource.data.acceptedAt == request.time
+        && getAfter(linkPath(resource.data.caregiverUid, request.auth.uid)).data.invitationCode == code
+        && getAfter(linkPath(resource.data.caregiverUid, request.auth.uid)).data.status == 'active';
+
+      // The caregiver removes their own codes (a new code replaces the old one; deleting the account).
+      allow delete: if isSignedIn() && resource.data.caregiverUid == request.auth.uid;
+    }
+
+    // The caregiver's latest code: only it can be accepted, and a new one waits 30 seconds after the last.
+    match /invitationOwners/{uid} {
+      function isNewOwnCode() {
+        return isPrimaryUserOwner(uid)
+          && request.resource.data.keys().hasOnly(['code', 'createdAt'])
+          && isInvitationCode(request.resource.data.code)
+          && request.resource.data.createdAt == request.time
+          && !exists(invitationPath(request.resource.data.code))
+          && getAfter(invitationPath(request.resource.data.code)).data.caregiverUid == uid;
+      }
+
+      allow get, delete: if isCaller(uid);
+      allow create: if isNewOwnCode();
+      allow update: if isNewOwnCode() && resource.data.createdAt + duration.value(30, 's') <= request.time;
     }
   }
 }

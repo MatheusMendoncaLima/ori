@@ -1,9 +1,10 @@
 # Perfis, vínculos e permissões
 
 **Situação:**
-- **Regras do Firestore e Cloud Functions:** implementadas e testadas no emulador (41 testes).
+- **Regras do Firestore, inclusive os convites:** implementadas e testadas no emulador (`functions/security-tests`).
 - **App Android:** implementado e parcialmente testado (testes de domínio e de ViewModels; telas sem teste de ponta a ponta com Firebase real).
-- **Publicação:** as regras do Firestore, incluindo conta única, `routineSeries` e `photos`, foram publicadas no projeto `oriteam-ori` em 03/11/2026, e os índices em 28/10/2026. As Cloud Functions **ainda não foram publicadas**, porque isso exige o plano Blaze (ver [Como publicar](#como-publicar)). Sem elas, gerar e aceitar convites não funciona.
+- **Convites sem Cloud Functions (15/11/2026):** gerar e aceitar convite passaram a ser feitos pelo app, conferidos pelas regras do Firestore (veja a seção 5). As Cloud Functions de antes exigiam o plano Blaze, nunca foram publicadas e ficam em `functions/functions` só para quando houver Blaze.
+- **Publicação:** as regras com os convites foram publicadas no projeto `oriteam-ori` em 15/11/2026.
 
 ## 1. Identidade não é autorização
 
@@ -12,7 +13,7 @@ O ORI separa duas perguntas:
 | Pergunta | Quem responde | Onde fica |
 |---|---|---|
 | **Quem é você?** (identidade) | Firebase Authentication | Token da sessão (`request.auth.uid`) |
-| **O que você pode fazer?** (autorização) | Regras do Firestore e Cloud Functions | Perfil (`users/{uid}`) e vínculo (`careLinks/...`) |
+| **O que você pode fazer?** (autorização) | Regras do Firestore | Perfil (`users/{uid}`) e vínculo (`careLinks/...`) |
 
 Estar logado **não dá acesso a nada** por si só. Uma conta sem perfil não lê
 nem grava dados do app.
@@ -60,15 +61,19 @@ careLinks/{caregiverUid}_{primaryUserUid}
   status: "active" | "revoked"
   permissions: { viewRoutines: bool, manageRoutines: bool, manageCommunication: bool }
   (vínculos antigos sem manageCommunication contam como "sem permissão")
-  createdAt, revokedAt
+  createdAt, revokedAt, invitationCode (o código aceito; vínculos antigos não têm)
 
 users/{uid}/aacBoards/{boardId}            (e /symbols/{symbolId}; veja caa.md)
 users/{uid}/settings/preferences           (só o dono; veja preferencias.md)
 users/{uid}/aacSavedMessages/{messageId}   (só o dono)
 
-invitations/{código}              (só o servidor lê e grava)
+invitations/{código}              (lido um por vez, pelo código; nunca em lista)
   caregiverUid, caregiverName, status: "pending" | "accepted"
-  createdAt, expiresAt (24 h), acceptedBy, acceptedAt
+  createdAt (do servidor; vale 24 h a partir dele), expiresAt (para a limpeza automática),
+  acceptedBy, acceptedAt
+
+invitationOwners/{uid}            (só o dono)
+  code: o último código da pessoa (só ele pode ser aceito), createdAt
 ```
 
 O id do vínculo é previsível (`cuidador_usuario`). Assim, a regra encontra o
@@ -87,7 +92,6 @@ sequenceDiagram
     participant A as App (OriApp)
     participant FA as Firebase Auth
     participant FS as Firestore (regras)
-    participant CF as Cloud Functions
 
     U->>A: abre o app
     A->>FA: signedInUser (sessão restaurada pelo SDK)
@@ -110,11 +114,12 @@ sequenceDiagram
         end
     end
     U->>A: responsável gera convite
-    A->>CF: createCareInvitation
-    CF->>FS: valida o perfil e grava invitations/{código}
+    A->>FS: lote: invitations/{código} + invitationOwners/{uid}
+    FS->>FS: autor real? nome do perfil? código no formato?
     U->>A: usuário digita o código
-    A->>CF: acceptCareInvitation(código)
-    CF->>FS: transação: valida papéis, validade e uso único;<br/>cria careLinks com só "ver rotina"
+    A->>FS: lê invitations/{código} (mensagem certa para cada recusa)
+    A->>FS: lote: cria careLinks com só "ver rotina"<br/>e marca o convite como usado
+    FS->>FS: convite pendente, de outra pessoa, o último do autor,<br/>com menos de 24 h? nomes iguais aos perfis? menor privilégio?
 ```
 
 ### Estados da sessão (`SessionState`)
@@ -142,22 +147,36 @@ sequenceDiagram
   como lista vazia. Isso vale, por exemplo, quando um vínculo é encerrado com a
   tela aberta.
 
-## 5. Operações no servidor
+## 5. Convites: o app grava, as regras conferem
 
-Criar um vínculo dá acesso aos dados de outra pessoa. Por isso essa operação
-**nunca é feita pelo cliente**: as regras negam `create` em `careLinks`, e só as
-Cloud Functions (Admin SDK) gravam vínculos.
+Criar um vínculo dá acesso aos dados de outra pessoa. Antes, só as Cloud Functions criavam vínculos, mas elas
+exigem o plano Blaze e nunca foram publicadas: sem elas, nenhum vínculo existia. Desde 15/11/2026, o app grava o
+convite e o vínculo, e **as regras do Firestore conferem tudo o que a função conferia**. Um cliente alterado
+continua sem conseguir criar um vínculo sem um código válido.
 
-| Função | Quem chama | Validações |
+**Por que dá para confiar nas regras aqui:** cada gravação vai num lote (`WriteBatch`), e as regras olham o banco como
+ficaria depois do lote (`getAfter`). O vínculo só é aceito se o convite for marcado como usado **no mesmo lote**, e o
+convite só é marcado como usado se o vínculo for criado junto. Um sem o outro é recusado.
+
+| Passo | Quem faz | O que as regras exigem |
 |---|---|---|
-| `createCareInvitation` | Quem vai acompanhar | Login exigido; o perfil precisa existir; o código tem 8 caracteres, é gerado com `crypto.randomInt`, sem caracteres ambíguos, e não se repete |
-| `acceptCareInvitation` | Quem será acompanhado | Login exigido; o perfil precisa existir; o código existe, está pendente e não expirou (24 h); não é um auto-vínculo; o autor ainda tem perfil; não há vínculo ativo duplicado. Tudo acontece em uma transação |
+| Gerar (`FirestoreInvitationRepository.createInvitation`) | Quem vai acompanhar | Perfil; o próprio uid e o nome do perfil; código de 8 caracteres sem 0/O e 1/I (gerado com `SecureRandom`), que ainda não existe; `createdAt` do servidor; o ponteiro `invitationOwners/{uid}` para o código no mesmo lote; 30 s desde o último código |
+| Ler o código digitado | Quem será acompanhado | Perfil. Só um convite por vez, pelo código: listar é recusado |
+| Aceitar (`acceptInvitation`) | Quem será acompanhado | Perfil dos dois; convite pendente, de outra pessoa, com menos de 24 h (pelo horário do servidor) e o último código do autor; vínculo `{responsável}_{eu}` com os nomes dos perfis, `status: active`, **só `viewRoutines`**, `createdAt` do servidor e o código aceito; um vínculo ativo não é sobrescrito, e um encerrado recomeça (novo consentimento) |
+| Apagar | Quem gerou | Só o próprio código e o próprio ponteiro |
 
-- O vínculo nasce com **menor privilégio**: só `viewRoutines`. Quem decide dar
-  `manageRoutines` e `manageCommunication` é o usuário principal.
-- Os erros esperados viram `HttpsError` com código (`not-found`,
-  `failed-precondition` etc.). O app mostra uma mensagem própria para cada um.
-  O log do servidor registra só o nome do erro.
+- **Um código por vez:** gerar de novo mostra o mesmo código enquanto ele tiver pelo menos uma hora de validade; senão
+  cria outro e apaga o anterior no mesmo lote. Só o último código de cada pessoa pode ser aceito.
+- **Idempotente:** aceitar de novo um código que eu mesmo já aceitei, com o vínculo ativo, devolve sucesso (a resposta
+  da primeira vez pode ter se perdido).
+- **Mensagens:** antes de gravar, o app lê o convite e diz o motivo certo (código não encontrado, vencido ou usado, já
+  vinculados). O que só as regras pegam vira "sem permissão".
+- **Só com internet:** as leituras vão ao servidor (`Source.SERVER`) e tudo para em 15 s com "Sem conexão". Nada fica
+  na fila do aparelho, porque um vínculo pendente não daria acesso a nada e confundiria as duas pessoas.
+- **Limite:** se quem convidou mudar o nome depois de gerar o código, o aceite é recusado (o nome guardado no convite
+  não bate mais com o perfil). Basta gerar um código novo.
+- **As Cloud Functions** (`functions/functions/src/careInvitations.ts`) ficam no repositório, com os testes delas
+  (`invitationFunctions.test.mjs`), para quando houver o plano Blaze. O app não as chama.
 
 ## 6. Testes de segurança
 
@@ -179,9 +198,10 @@ Esse comando precisa de Java 11 ou superior e do Node 24.
 | Usuário principal | Lê a própria rotina; marca e desmarca atividade autorizada; **não** marca atividade reservada; **não** registra conclusão em nome de outra pessoa; **não** edita nem cria atividades; **não** acessa a rotina de terceiros |
 | Responsável com vínculo | Lê só atividades ativas; consulta que poderia trazer ocultas é recusada; cria só como autor real; edita atividade já concluída sem reescrever a conclusão; não toca em atividades ocultas; não acessa pessoas não vinculadas |
 | Permissões | "Só ver" lê, mas não gerencia; **responsável não se dá permissão**; usuário principal concede e retira; chaves de permissão desconhecidas são recusadas |
-| Vínculos | Cliente **não cria** vínculo; só os dois participantes leem; **encerrar corta o acesso na hora** e não pode ser desfeito pelo cliente; responsável já revogado não tem acesso; terceiros não encerram vínculo alheio; convites são inacessíveis ao cliente |
+| Vínculos | Cliente **não cria** vínculo sem convite; só os dois participantes leem; **encerrar corta o acesso na hora** e não pode ser desfeito pelo cliente; responsável já revogado não tem acesso; terceiros não encerram vínculo alheio |
+| Convites (`careInvitations.test.mjs`) | Gerar só com o próprio uid, o nome do perfil, o formato e o ponteiro; código já usado por outra pessoa; 30 s entre códigos, e só o último vale; ler um por vez, nunca em lista, só com perfil; aceitar cria vínculo só de ver, para os dois, e gasta o código; mais permissões, outros nomes, outro estado ou outro vínculo são recusados; vínculo e convite só juntos; o próprio código, vencido ou usado é recusado; sem perfil (de quem aceita ou de quem convidou) é recusado; vínculo ativo não é sobrescrito; encerrado recomeça só com um código novo; só quem gerou apaga |
 | Comunicação (`aac.test.mjs`) | Dono organiza pranchas e símbolos com consultas limitadas; símbolo só em prancha existente; imagem só como referência curta (nada de `data:`, nada de `../`); responsável com `manageCommunication` organiza, mas **não** adiciona fotos; responsável sem a permissão, com vínculo antigo ou revogado não lê nada; **frases salvas são só do dono**; só o usuário principal concede `manageCommunication` |
-| Funções de convite | Formato do código; qualquer conta com perfil cria e aceita; retentativa em colisão; aceite cria vínculo com menor privilégio; uso único; código desconhecido ou expirado; conta sem perfil; sem vínculo duplicado; vínculo revogado recriado com permissões padrão; autor que não tem mais perfil. Os perfis desses testes não têm `role` |
+| Funções de convite, guardadas (`invitationFunctions.test.mjs`) | Formato do código; qualquer conta com perfil cria e aceita; retentativa em colisão; aceite cria vínculo com menor privilégio; uso único; código desconhecido ou expirado; conta sem perfil; sem vínculo duplicado; vínculo revogado recriado com permissões padrão; autor que não tem mais perfil. Os perfis desses testes não têm `role` |
 
 Para conferir que os testes detectam falhas reais, as regras foram
 enfraquecidas temporariamente (papel alterável e permissões ignoradas). Os
@@ -189,6 +209,10 @@ testes "o papel não pode ser alterado" e "só ver não gerencia" falharam, como
 esperado. Depois disso as regras foram restauradas. Ao tirar o papel do perfil,
 a regra antiga (que exigia `role`) foi testada de novo: os dois testes de perfil
 novo falharam com ela.
+
+Os convites passaram pelo mesmo teste em 15/11/2026: sem a exigência das permissões padrão, sem a espera de 30 s, sem
+"só o último código do autor" ou sem "convite ainda pendente" no vínculo, um teste falhou em cada caso. A conferência
+de validade de 24 h ficou só na regra do convite: repetida na do vínculo, nenhum teste a distinguia.
 
 ### App Android (`android/`)
 
@@ -203,43 +227,43 @@ novo falharam com ela.
 | `SignedInViewModelsTest` | Cada lado do vínculo vê os seus (`CareLinkSide`); erro de permissão na rotina não vira lista vazia; marcação proibida não chega ao repositório; encerrar vínculo exige confirmação; só o usuário principal muda permissões; validação e mensagens do convite; perfil exige nome |
 | `AacDomainTest`, `AacOrganizeViewModelTest`, `AacScreenTest` | Quem organiza pranchas, quem usa frases salvas e fotos; responsável sem permissão não grava nada e não vê botões de mudança |
 | `FirestoreSchemaTest` | Perfil sem nome é rejeitado, e o `role` antigo é ignorado; permissão ausente equivale a "não pode"; valores iguais aos das regras; mapeamento de erros |
+| `InvitationCodesTest` | Códigos de 8 caracteres do alfabeto, diferentes entre si; limpeza do que foi digitado e recusa de 0/O e 1/I; o alfabeto das regras é o mesmo do app (lido de `firestore.rules`); quem pode aceitar (outra pessoa, uma vez, em 24 h) |
+| `InvitationViewModelTest` | Gerar; sem conexão não vira "código errado"; código limpo e curto ou com letra parecida não vai ao servidor; a mensagem de cada recusa |
 | `LoginViewModelTest`, `RegisterViewModelTest` | Preferência "Aa" persistida; cadastro grava o perfil; conta sem perfil segue para a sessão |
 
 ## 7. Limitações e riscos
 
-- **As Cloud Functions não estão publicadas.** Gerar e aceitar convites falha até
-  o deploy das funções. O restante do app já usa as regras publicadas.
 - **Rascunho de perfil no cadastro:** criar a conta e o perfil são dois passos.
   Entre eles, a tela "Complete seu perfil" pode aparecer por um instante.
 - **Cache offline:** o Firestore guarda dados no aparelho. Ao trocar de conta no
   mesmo aparelho, a nova conta só consulta os próprios caminhos, mas o cache não
   é apagado ao sair.
-- **Convites:** códigos expirados não são apagados automaticamente, e não há
-  limite de quantos convites um responsável pode gerar.
-- **Exclusão de conta** e **ocultar atividade do responsável** ainda não têm
-  fluxo no app. O status `hidden_from_caregiver` já é respeitado pelas regras.
-- **App Check** não está configurado. Ele reduziria chamadas feitas fora do app.
+- **Convites:** um código usado ou vencido fica no banco até a política de TTL no campo `expiresAt` ser ligada no
+  console do Firebase (S2). Cada pessoa gera no máximo um código a cada 30 s, e só o último vale.
+- **App Check** não está configurado. Ele reduziria gravações feitas fora do app.
 
 ## Como publicar
 
-**Publique antes de instalar a versão de conta única:** contas antigas com `role: caregiver` só acessam a própria rotina com as regras novas, e contas novas só geram convites com as funções novas.
-
 **Perfil sem papel (03/11/2026):** as regras publicadas recusam `role` em perfis novos. Uma versão antiga do app, que ainda grava `role`, não consegue criar perfil: o cadastro para em "Complete seu perfil". Instale a versão nova nos aparelhos de teste.
+
+**Convites sem Cloud Functions (15/11/2026):** publique as regras antes de testar os convites. Um app antigo, que ainda
+chama as funções, mostra "Sem conexão" ou erro ao gerar um código; instale a versão nova.
 
 Com a conta do projeto Firebase, dentro de `functions/`:
 
 ```bash
-firebase deploy --only firestore:rules,firestore:indexes,functions
+firebase deploy --only firestore:rules,firestore:indexes --project oriteam-ori
 ```
 
-Antes de publicar, confira as regras atuais no console: este arquivo
+Antes de publicar, rode `npm test` em `functions/security-tests` e confira as regras atuais no console: este arquivo
 **substitui** as regras existentes.
+
+**Limpeza dos convites (opcional, recomendada):** no console do Firebase, em Firestore → Time-to-live, crie uma política
+para o grupo de coleções `invitations` no campo `expiresAt`. O Firestore apaga os convites vencidos sozinho, em até um
+dia depois da data, sem custo no plano gratuito.
 
 ## Erro do código de convite (09/11/2026)
 
-Enquanto as Cloud Functions de convite não estão publicadas (exigem o plano Blaze), "Gerar código de convite"
-recebia "não encontrado" do servidor e mostrava "Código não encontrado. Confira as letras". Agora o app separa os dois
-casos pelo texto do erro do servidor (`SERVER_NOT_FOUND_MESSAGE`, igual ao de `careInvitations.ts`): um código que não
-existe continua "Código não encontrado"; uma função que não existe mostra "Este serviço ainda não está disponível".
-Teste: `FirestoreSchemaTest`. Os convites só funcionam de verdade depois de publicar as funções, ou de reescrever os
-convites só com o Firestore e as regras.
+Enquanto os convites dependiam das Cloud Functions não publicadas, "Gerar código de convite" mostrava "Código não
+encontrado". Em 09/11/2026 o app passou a dizer "Este serviço ainda não está disponível". Desde 15/11/2026 os convites
+não usam funções (seção 5), e essa mensagem saiu do app.

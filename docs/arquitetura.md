@@ -9,7 +9,7 @@ Ele descreve **o que existe hoje**; o que ainda não foi feito aparece em
 | Parte | Tecnologia | Situação |
 |---|---|---|
 | `android/` | Kotlin, Jetpack Compose, Hilt, Firebase Authentication | Abertura, cadastro, login e recuperação de senha |
-| `functions/functions/` | Cloud Functions em TypeScript | Estrutura pronta, nenhuma função exportada |
+| `functions/functions/` | Cloud Functions em TypeScript | Convites pelo servidor, guardados para o plano Blaze; o app não as usa |
 | `web/` | Next.js | Template inicial, sem funcionalidades do ORI |
 
 O app Android ainda **não grava dados** em nenhum banco (nem Firestore nem
@@ -68,9 +68,9 @@ testadas com JUnit puro, sem emulador.
 | `data/local` | Banco Room, repositórios locais e `Routed*Repository`, que escolhem entre aparelho e conta pelo dono dos dados |
 | `data/auth` | `FirebaseAuthRepository`, a única classe que conhece o Firebase Auth |
 | `data/firestore` | Nomes de coleções e campos (`FirestoreSchema`), conversão documento ↔ modelo e mapeamento de erros |
-| `data/profile`, `data/routine`, `data/aac`, `data/carelink`, `data/preferences` | Repositórios Firestore, Cloud Functions (convites) e DataStore; na CAA, também a voz (TextToSpeech); na rotina, as leituras compartilhadas entre as telas |
+| `data/profile`, `data/routine`, `data/aac`, `data/carelink`, `data/preferences` | Repositórios Firestore (também os convites) e DataStore; na CAA, também a voz (TextToSpeech); na rotina, as leituras compartilhadas entre as telas |
 | `data/photos` | `DevicePhotoStore` (reduz e guarda as fotos no aparelho) e `FirestoreCloudPhotoRepository` (a cópia na conta) |
-| `di` | Módulos Hilt: `FirebaseModule` (Auth, Firestore, Functions), `AuthModule` e `DataModule` |
+| `di` | Módulos Hilt: `FirebaseModule` (Auth e Firestore), `AuthModule` e `DataModule` |
 | `ui/app` | `OriApp` (raiz guiada pela sessão), `session/SessionViewModel`, `main/MainScaffold` (área principal) |
 | `ui/app/screens/<feature>` | Uma pasta por tela: `XScreen.kt` (Route + Screen), `XViewModel.kt`, `XUiState.kt` |
 | `ui/app/screens/auth` | Conversão de erros em textos (`@StringRes`) e `AuthFormScaffold` comum a login e cadastro |
@@ -185,7 +185,7 @@ troca a área inteira.
 | `android/` | `./gradlew assembleProdProfiling` | O release com R8 e perfis de baseline, assinado com a chave de depuração: o build para medir a fluidez num aparelho |
 | `web/` | `npm run format:check`, `npm run lint`, `npm run build` | Prettier, ESLint, build |
 | `functions/functions/` | `npm run lint`, `npm run build` | ESLint (estilo Google), TypeScript |
-| `functions/security-tests/` | `npm run format:check`, `npm test` | Prettier; regras do Firestore e Cloud Functions no emulador (precisa de Java) |
+| `functions/security-tests/` | `npm run format:check`, `npm test` | Prettier; regras do Firestore (inclusive os convites) e as Cloud Functions guardadas, no emulador (precisa de Java) |
 
 O GitHub Actions (`.github/workflows/ci.yml`) executa todas essas verificações
 em cada pull request e em cada push na `main`.
@@ -202,7 +202,8 @@ em cada pull request e em cada push na `main`.
 
 ## Limitações conhecidas
 
-- As Cloud Functions de convite ainda **não foram publicadas**; as regras do Firestore já foram.
+- O app não usa Cloud Functions: os convites são conferidos pelas regras do Firestore (veja
+  [funcionalidades/perfis-e-permissoes.md](funcionalidades/perfis-e-permissoes.md)).
 - Falhas e gambiarras conhecidas, com a correção sugerida: [revisao-de-codigo.md](revisao-de-codigo.md).
 - O modo escuro não está implementado (ver [design-system.md](design-system.md)).
 - A espera de 5 segundos na abertura não pode ser pulada.

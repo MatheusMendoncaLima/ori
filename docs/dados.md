@@ -18,7 +18,6 @@ flowchart LR
     UI["Telas e ViewModels<br/>(ui)"] --> C["Contratos<br/>(domain)"]
     D["Repositórios<br/>(data)"] -. implementam .-> C
     D --> FS[(Firestore<br/>+ cache local)]
-    D --> CF[Cloud Functions]
     D --> FA[Firebase Auth]
     D --> DS[(DataStore)]
 ```
@@ -29,7 +28,7 @@ flowchart LR
 | `ProfileRepository` | `FirestoreProfileRepository` | `users/{uid}` |
 | `RoutineRepository` | `FirestoreRoutineRepository` | `users/{uid}/routineTasks` |
 | `CareLinkRepository` | `FirestoreCareLinkRepository` | `careLinks` |
-| `InvitationRepository` | `FunctionsInvitationRepository` | Cloud Functions (só online) |
+| `InvitationRepository` | `FirestoreInvitationRepository` | `invitations` e `invitationOwners` (só online) |
 | `DisplayPreferencesRepository` | `DataStoreDisplayPreferencesRepository` | DataStore local |
 | `DevicePreferencesRepository` | `DataStoreDevicePreferencesRepository` | DataStore local (inclui a cópia das preferências da conta) |
 | `AccountPreferencesRepository` | `FirestoreAccountPreferencesRepository` | Firestore |
@@ -55,7 +54,7 @@ users/{uid}/routineTasks/{taskId}             dono: uid (usuário principal)
 careLinks/{caregiverUid}_{primaryUserUid}     dois participantes
   caregiverUid, primaryUserUid, caregiverName, primaryUserName,
   status, permissions { viewRoutines, manageRoutines, manageCommunication },
-  createdAt, revokedAt
+  createdAt, revokedAt, invitationCode (o código aceito; vínculos antigos não têm)
 
 users/{uid}/aacBoards/{boardId}              dono: uid (usuário principal)
   name, position, language (opcional), createdBy, createdAt, updatedAt
@@ -67,8 +66,10 @@ users/{uid}/settings/preferences             só o dono
 users/{uid}/aacSavedMessages/{id}            só o dono
   text, language (opcional), emoji (opcional), position (opcional), createdAt
 
-invitations/{código}                          só o servidor
+invitations/{código}                          quem convida cria; quem aceita marca como usado
   caregiverUid, caregiverName, status, createdAt, expiresAt, acceptedBy, acceptedAt
+invitationOwners/{uid}                       só o dono: o último código dele
+  code, createdAt
 ```
 
 Os campos e valores válidos estão em `FirestoreSchema.kt` (Android) e em
@@ -87,8 +88,8 @@ dados. Assim, a regra de propriedade é uma comparação simples
 | Pranchas e símbolos | O dono; responsável com `manageCommunication` | Os mesmos; fotos (`device:`) só o dono adiciona (detalhes em [funcionalidades/caa.md](funcionalidades/caa.md)) |
 | Frases salvas | Só o dono | Só o dono cria e exclui; depois de salva, só o emoji e o lugar (`position`) mudam |
 | Preferências da conta | Só o dono | Só o dono grava; nunca são apagadas (detalhes em [funcionalidades/preferencias.md](funcionalidades/preferencias.md)) |
-| Vínculo | Os dois participantes | Só o servidor cria; qualquer participante encerra; só o usuário principal muda permissões |
-| Convite | Ninguém pelo app | Só as Cloud Functions |
+| Vínculo | Os dois participantes | Só quem aceita um convite válido cria, junto com o convite; qualquer participante encerra; só o usuário principal muda permissões |
+| Convite | Um por vez, pelo código (nunca uma lista), por quem tem perfil | Quem convida cria e apaga; quem aceita só marca como usado, no mesmo lote do vínculo |
 
 O detalhamento, com os testes, está em
 [funcionalidades/perfis-e-permissoes.md](funcionalidades/perfis-e-permissoes.md).
@@ -194,7 +195,7 @@ sequenceDiagram
 | Mudar algo com internet | A mudança aparece na hora. Nenhum aviso aparece: por um instante ela está "esperando o servidor", e avisar isso só faria uma frase piscar |
 | Marcar atividade sem internet | Fica marcada na hora, com o aviso "Alteração salva no aparelho"; é enviada depois |
 | Encerrar vínculo ou mudar permissão sem internet | Mesmo comportamento: aplicado no aparelho e enviado depois. **O acesso do responsável só é cortado no servidor quando a mudança chegar lá** |
-| Gerar ou aceitar convite sem internet | Falha em até 15 s com "Sem conexão". Não há fila, porque o servidor precisa validar |
+| Gerar ou aceitar convite sem internet | Falha em até 15 s com "Sem conexão". Não há fila: o vínculo só existe se o servidor confirmar |
 | Criar perfil sem internet | A gravação fica pendente e o app segue com o perfil local. Se o servidor recusar ao sincronizar, a sessão volta para "Complete seu perfil" |
 
 ### Política adotada
@@ -207,9 +208,10 @@ sequenceDiagram
 - **Repetição:**
   - O app não cria laços de repetição próprios. O SDK já repete as escritas do
     Firestore.
-  - As chamadas às Cloud Functions são repetidas pelo usuário ("Tentar
-    novamente") e são **idempotentes**: aceitar de novo um convite que já deu
-    certo devolve sucesso, sem duplicar o vínculo.
+  - Gerar e aceitar convite são repetidos pela pessoa ("Tentar novamente") e são
+    **idempotentes**: aceitar de novo um convite que já deu certo devolve sucesso,
+    sem duplicar o vínculo, e gerar de novo mostra o mesmo código enquanto ele
+    tiver pelo menos uma hora de validade.
 - **Conflitos:**
   - As escritas alteram **só os campos necessários** (`update`), então mudanças
     em campos diferentes não se sobrescrevem. Exemplo: o responsável edita o
@@ -285,7 +287,7 @@ Mídias e a contagem de uso da CAA ficam em Room também para quem tem conta, po
 
 | Onde | O que | Como |
 |---|---|---|
-| `functions/security-tests` (emulador) | Regras: propriedade, permissões, limite obrigatório de consultas. Funções: convites, transação, idempotência | `npm test` |
+| `functions/security-tests` (emulador) | Regras: propriedade, permissões, limite obrigatório de consultas. Convites feitos pelo app (`careInvitations.test.mjs`); as funções guardadas para o plano Blaze (`invitationFunctions.test.mjs`) | `npm test` |
 | `FirestorePoliciesTest` (JVM, tempo virtual) | Escrita confirmada, pendente (sem travar) e recusada; perfil que espera o servidor, desiste em 8 s e se recupera | `./gradlew testDevDebugUnitTest` |
 | `FirestoreSchemaTest` | Conversão documento ↔ modelo, valores iguais aos das regras, mapeamento de erros | idem |
 | `SignedInViewModelsTest`, `SessionViewModelTest` | ViewModels com repositórios falsos: avisos offline, limite atingido, alteração pendente, erros de permissão | idem |
@@ -306,9 +308,11 @@ rejected" falhou, e a regra foi restaurada.
   pelas consultas, porque cada uma lê só os próprios caminhos, mas os dados
   continuam no aparelho.
 - Não há paginação por cursor: nenhuma coleção atual precisa dela.
-- Convites expirados não são limpos automaticamente.
-- As Cloud Functions não foram publicadas (exigem plano Blaze), e o ambiente de
-  staging não existe.
+- Convites expirados só são limpos automaticamente depois de ligar a política de
+  TTL no campo `expiresAt` (console do Firebase). Até lá, cada pessoa deixa no
+  máximo um código, porque um código novo apaga o anterior.
+- As Cloud Functions não são usadas pelo app (exigiriam o plano Blaze), e o ambiente
+  de staging não existe.
 
 ## Fotos
 

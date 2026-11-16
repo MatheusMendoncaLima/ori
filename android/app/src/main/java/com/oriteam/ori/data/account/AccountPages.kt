@@ -55,3 +55,12 @@ private fun readableValue(value: Any?): Any? = when (value) {
     is List<*> -> value.map(::readableValue)
     else -> value
 }
+
+internal fun FirebaseFirestore.invitationOwnerOf(ownerUid: String) =
+    collection(FirestoreSchema.INVITATION_OWNERS).document(ownerUid)
+
+/** The person's latest invitation code, if it still exists (only one works at a time). */
+internal suspend fun FirebaseFirestore.invitationOf(ownerUid: String): DocumentSnapshot? =
+    invitationOwnerOf(ownerUid).get().await().getString(FirestoreSchema.CODE)
+        ?.let { collection(FirestoreSchema.INVITATIONS).document(it).get().await() }
+        ?.takeIf { it.exists() && it.getString(FirestoreSchema.CAREGIVER_UID) == ownerUid }

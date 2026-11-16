@@ -64,7 +64,8 @@ class FirestoreAccountDataExporter @Inject constructor(
                 "savedPhrases" to user.collection(FirestoreSchema.AAC_SAVED_MESSAGES)
                     .readAll(AccountPages.SAVED_MESSAGES).map { it.readable() },
                 "photos" to user.collection(FirestoreSchema.PHOTOS).readAll(AccountPages.PHOTOS).map { it.readable() },
-                "careLinks" to firestore.careLinksOf(ownerUid).map { it.readable() }
+                "careLinks" to firestore.careLinksOf(ownerUid).map { it.readable() },
+                "invitation" to firestore.invitationOf(ownerUid)?.readable()
             )
         )
     }
@@ -72,7 +73,8 @@ class FirestoreAccountDataExporter @Inject constructor(
 
 /**
  * Deletes the account from the app itself (no server function): first everything under the profile, then the links
- * (ended, then removed, so the other person's list loses them too), the consent, the profile and last the sign-in.
+ * (ended, then removed, so the other person's list loses them too), the invitation code, the consent, the profile
+ * and last the sign-in.
  * The rules let the owner delete each of these (tested in functions/security-tests).
  */
 class FirestoreAccountDeletion @Inject constructor(
@@ -134,6 +136,7 @@ class FirestoreAccountDeletion @Inject constructor(
         delete(user.collection(FirestoreSchema.PHOTOS).readAll(AccountPages.PHOTOS).map { it.reference })
         delete(listOf(user.collection(FirestoreSchema.SETTINGS).document(FirestoreSchema.PREFERENCES_DOCUMENT)))
         deleteCareLinks(ownerUid)
+        delete(listOfNotNull(firestore.invitationOf(ownerUid)?.reference, firestore.invitationOwnerOf(ownerUid)))
         consents.clearConsent(ownerUid)
         delete(listOf(user))
     }

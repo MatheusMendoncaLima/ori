@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.oriteam.ori.R
 import com.oriteam.ori.domain.carelink.CareInvitation
+import com.oriteam.ori.domain.carelink.InvitationCodes
 import com.oriteam.ori.domain.carelink.InvitationRepository
 import com.oriteam.ori.domain.common.DataError
 import com.oriteam.ori.domain.common.DataResult
@@ -34,10 +35,10 @@ internal fun DataError.invitationMessageRes(): Int = when (this) {
     DataError.PRECONDITION_FAILED -> R.string.invitation_error_expired
     DataError.CONFLICT -> R.string.invitation_error_already_linked
     DataError.PERMISSION_DENIED -> R.string.invitation_error_not_allowed
-    DataError.NETWORK_UNAVAILABLE, DataError.SERVICE_UNAVAILABLE, DataError.UNKNOWN -> messageRes()
+    DataError.NETWORK_UNAVAILABLE, DataError.UNKNOWN -> messageRes()
 }
 
-/** Caregiver creates a code; primary user types it. Both operations run on the server. */
+/** Caregiver creates a code; primary user types it. Both need a connection (see [InvitationRepository]). */
 @HiltViewModel
 class InvitationViewModel @Inject constructor(
     private val invitationRepository: InvitationRepository
@@ -71,8 +72,8 @@ class InvitationViewModel @Inject constructor(
     fun onAcceptInvitationClick() {
         val state = _uiState.value
         if (state.isLoading) return
-        val code = state.codeInputValue.filterNot(Char::isWhitespace).uppercase()
-        if (code.length != INVITATION_CODE_LENGTH) {
+        val code = InvitationCodes.normalize(state.codeInputValue)
+        if (!InvitationCodes.isValid(code)) {
             _uiState.update { it.copy(errorMessageRes = R.string.invitation_error_format) }
             return
         }
@@ -87,10 +88,5 @@ class InvitationViewModel @Inject constructor(
                 }
             }
         }
-    }
-
-    private companion object {
-        /** Same length the server expects (functions/functions/src/careInvitations.ts). */
-        const val INVITATION_CODE_LENGTH = 8
     }
 }

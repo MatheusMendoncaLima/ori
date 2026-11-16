@@ -8,7 +8,7 @@ import com.oriteam.ori.domain.routine.TaskStatus
 
 /**
  * Names and values stored in Firestore. They are a persisted contract shared with
- * `functions/firestore.rules` and the Cloud Functions: changing one requires a migration.
+ * `functions/firestore.rules`: changing one requires a migration.
  */
 internal object FirestoreSchema {
     const val USERS = "users"
@@ -80,6 +80,15 @@ internal object FirestoreSchema {
     const val MANAGE_ROUTINES = "manageRoutines"
     const val MANAGE_COMMUNICATION = "manageCommunication"
     const val REVOKED_AT = "revokedAt"
+
+    const val INVITATIONS = "invitations"
+    const val INVITATION_OWNERS = "invitationOwners"
+    const val INVITATION_CODE = "invitationCode"
+    const val CODE = "code"
+    const val EXPIRES_AT = "expiresAt"
+    const val ACCEPTED_BY = "acceptedBy"
+    const val INVITATION_PENDING = "pending"
+    const val INVITATION_ACCEPTED = "accepted"
 
     val taskStatusValues = mapOf(
         TaskStatus.ACTIVE to "active",

@@ -29,17 +29,22 @@ class InvitationViewModelTest {
     }
 
     @Test
-    fun `a missing invitation service is not reported as a wrong code`() {
-        repository.createResult = DataResult.Failure(DataError.SERVICE_UNAVAILABLE)
+    fun `no connection is not reported as a wrong code`() {
+        repository.createResult = DataResult.Failure(DataError.NETWORK_UNAVAILABLE)
         viewModel.onCreateInvitationClick()
 
-        assertEquals(R.string.error_service_unavailable, viewModel.uiState.value.errorMessageRes)
+        assertEquals(R.string.error_network_unavailable, viewModel.uiState.value.errorMessageRes)
         assertNull(viewModel.uiState.value.createdInvitation)
     }
 
     @Test
     fun `a code is cleaned before it is sent, and a short one never reaches the server`() {
         viewModel.onCodeInputChange("abc")
+        viewModel.onAcceptInvitationClick()
+        assertEquals(R.string.invitation_error_format, viewModel.uiState.value.errorMessageRes)
+        assertTrue(repository.acceptCalls.isEmpty())
+        // O and 0, I and 1 are not in the codes: a typing mistake is said at once.
+        viewModel.onCodeInputChange("ABCD234O")
         viewModel.onAcceptInvitationClick()
         assertEquals(R.string.invitation_error_format, viewModel.uiState.value.errorMessageRes)
         assertTrue(repository.acceptCalls.isEmpty())

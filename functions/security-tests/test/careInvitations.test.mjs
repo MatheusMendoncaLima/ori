@@ -1,226 +1,397 @@
-// Server-side care link rules (Cloud Functions core), run against the Firestore
-// emulator through the Admin SDK, exactly as the deployed functions use it.
-import assert from "node:assert/strict";
-import { before, beforeEach, describe, it } from "node:test";
-import { initializeApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+// Firestore security rules tests: invitations made and accepted by the app, without Cloud Functions.
+// The rules check everything the server used to check: a real author, a 24-hour code used once, the latest
+// code of the caregiver, no self link, the names in the profiles and a link born with the least privilege.
+import { describe, it } from "node:test";
+import { assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
 import {
-  acceptInvitation,
-  createInvitation,
-  normalizeInvitationCode,
-} from "../../functions/lib/careInvitations.js";
+  PRIMARY,
+  OTHER_PRIMARY,
+  CAREGIVER,
+  REVOKED_CAREGIVER,
+  UNLINKED_CAREGIVER,
+  NO_PROFILE,
+  dbAs,
+  anonymousDb,
+  testEnv,
+} from "./support/rulesFixture.mjs";
+import {
+  Timestamp,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  writeBatch,
+} from "firebase/firestore";
 
-const PROJECT_ID = "demo-ori";
-const NOW = new Date("2026-10-28T12:00:00Z");
-const ONE_DAY_LATER = new Date(NOW.getTime() + 24 * 60 * 60 * 1000);
-let db;
-
-const expectCode = (code) => (error) => {
-  assert.equal(error.code, code);
-  return true;
+const CODE = "K7MPQR2X";
+const OTHER_CODE = "W3NXHT8C";
+const HOUR = 60 * 60 * 1000;
+const VIEW_ONLY = {
+  viewRoutines: true,
+  manageRoutines: false,
+  manageCommunication: false,
 };
 
-async function clearDatabase() {
-  const host = process.env.FIRESTORE_EMULATOR_HOST;
-  const url = `http://${host}/emulator/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
-  const response = await fetch(url, { method: "DELETE" });
-  assert.ok(response.ok, "could not clear the emulator");
+const fromNow = (millis) => Timestamp.fromMillis(Date.now() + millis);
+
+// As the app creates it: the code, and the pointer to the latest code, in one batch.
+function invite(uid, name, code = CODE, overrides = {}, pointer = {}) {
+  const db = dbAs(uid);
+  const batch = writeBatch(db);
+  batch.set(doc(db, `invitations/${code}`), {
+    caregiverUid: uid,
+    caregiverName: name,
+    status: "pending",
+    createdAt: serverTimestamp(),
+    expiresAt: fromNow(24 * HOUR),
+    ...overrides,
+  });
+  batch.set(doc(db, `invitationOwners/${uid}`), {
+    code,
+    createdAt: serverTimestamp(),
+    ...pointer,
+  });
+  return batch.commit();
 }
 
-async function seedProfiles() {
-  // Profiles as the app creates them now: a name, no role.
-  const profile = (name) => ({ displayName: name, createdAt: NOW });
-  await db.doc("users/cara").set(profile("Cara"));
-  await db.doc("users/pat").set(profile("Pat"));
-  await db.doc("users/otto").set(profile("Otto"));
+const linkFrom = (caregiverUid, caregiverName, me, myName, code) => ({
+  caregiverUid,
+  primaryUserUid: me,
+  caregiverName,
+  primaryUserName: myName,
+  status: "active",
+  permissions: VIEW_ONLY,
+  createdAt: serverTimestamp(),
+  revokedAt: null,
+  invitationCode: code,
+});
+
+// As the app accepts it: the link and the invitation marked as used, in one batch.
+function accept(
+  me,
+  myName,
+  {
+    caregiverUid = UNLINKED_CAREGIVER,
+    caregiverName = UNLINKED_CAREGIVER,
+    code = CODE,
+  } = {},
+  linkChanges = {},
+  invitationChanges = {},
+) {
+  const db = dbAs(me);
+  const batch = writeBatch(db);
+  batch.set(doc(db, `careLinks/${caregiverUid}_${me}`), {
+    ...linkFrom(caregiverUid, caregiverName, me, myName, code),
+    ...linkChanges,
+  });
+  batch.update(doc(db, `invitations/${code}`), {
+    status: "accepted",
+    acceptedBy: me,
+    acceptedAt: serverTimestamp(),
+    ...invitationChanges,
+  });
+  return batch.commit();
 }
 
-before(() => {
-  initializeApp({ projectId: PROJECT_ID });
-  db = getFirestore();
-});
-
-beforeEach(async () => {
-  await clearDatabase();
-  await seedProfiles();
-});
-
-describe("invitation codes", () => {
-  it("accepts lowercase codes with spaces and rejects malformed input", () => {
-    assert.equal(normalizeInvitationCode(" abcd efgh "), "ABCDEFGH");
-    for (const bad of ["", "ABC", "ABCDEFGH1", "ABCDEF0O", 12345678, null]) {
-      assert.throws(
-        () => normalizeInvitationCode(bad),
-        expectCode("invalid-argument"),
-      );
-    }
-  });
-});
-
-describe("createInvitation", () => {
-  it("stores a pending invitation that expires in 24 hours", async () => {
-    const { code, expiresAtMillis } = await createInvitation(db, "cara", NOW);
-
-    const stored = await db.doc(`invitations/${code}`).get();
-    assert.equal(stored.get("status"), "pending");
-    assert.equal(stored.get("caregiverUid"), "cara");
-    assert.equal(expiresAtMillis, ONE_DAY_LATER.getTime());
-  });
-
-  it("any account with a profile can invite, and only those", async () => {
-    const { code } = await createInvitation(db, "pat", NOW);
-    assert.equal(
-      (await db.doc(`invitations/${code}`).get()).get("caregiverUid"),
-      "pat",
-    );
-    await assert.rejects(
-      createInvitation(db, "nobody", NOW),
-      expectCode("permission-denied"),
-    );
-  });
-
-  it("retries when a generated code is already taken", async () => {
-    await db.doc("invitations/AAAAAAAA").set({ status: "pending" });
-    const codes = ["AAAAAAAA", "BBBBBBBB"];
-
-    const { code } = await createInvitation(db, "cara", NOW, () =>
-      codes.shift(),
-    );
-
-    assert.equal(code, "BBBBBBBB");
-  });
-});
-
-describe("acceptInvitation", () => {
-  it("creates an active link with view-only permission and consumes the code", async () => {
-    const { code } = await createInvitation(db, "cara", NOW);
-
-    const result = await acceptInvitation(db, "pat", code.toLowerCase(), NOW);
-
-    assert.deepEqual(result, { linkId: "cara_pat", caregiverName: "Cara" });
-    const link = await db.doc("careLinks/cara_pat").get();
-    assert.equal(link.get("status"), "active");
-    assert.deepEqual(link.get("permissions"), {
-      viewRoutines: true,
-      manageRoutines: false,
-      manageCommunication: false,
+// An invitation made some time ago, with its pointer (written as the server would see it).
+async function seedInvitation(uid, name, code, ageMillis, status = "pending") {
+  await testEnv().withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    const createdAt = Timestamp.fromMillis(Date.now() - ageMillis);
+    await setDoc(doc(db, `invitations/${code}`), {
+      caregiverUid: uid,
+      caregiverName: name,
+      status,
+      createdAt,
+      expiresAt: Timestamp.fromMillis(createdAt.toMillis() + 24 * HOUR),
     });
-    assert.equal(link.get("primaryUserName"), "Pat");
-    assert.equal(
-      (await db.doc(`invitations/${code}`).get()).get("status"),
+    await setDoc(doc(db, `invitationOwners/${uid}`), { code, createdAt });
+  });
+}
+
+describe("making an invitation", () => {
+  it("stores a pending code with the real name and the pointer to it", async () => {
+    await assertSucceeds(invite(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER));
+    await assertSucceeds(
+      getDoc(
+        doc(dbAs(UNLINKED_CAREGIVER), `invitationOwners/${UNLINKED_CAREGIVER}`),
+      ),
+    );
+  });
+
+  it("refuses another author, a forged name, a used status or a long life", async () => {
+    await assertFails(
+      invite(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER, CODE, {
+        caregiverUid: CAREGIVER,
+      }),
+    );
+    await assertFails(invite(UNLINKED_CAREGIVER, "Someone else"));
+    await assertFails(
+      invite(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER, CODE, {
+        status: "accepted",
+      }),
+    );
+    await assertFails(
+      invite(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER, CODE, {
+        expiresAt: fromNow(72 * HOUR),
+      }),
+    );
+    await assertFails(
+      invite(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER, CODE, {
+        createdAt: new Date(0),
+      }),
+    );
+    await assertFails(
+      invite(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER, CODE, { extra: true }),
+    );
+  });
+
+  it("refuses a code outside the alphabet, and a code without its pointer", async () => {
+    for (const bad of [
+      "ABCDEFG",
+      "ABCDEFGHJ",
+      "ABCDEFG0",
+      "ABCDEFGI",
+      "abcdefgh",
+    ]) {
+      await assertFails(invite(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER, bad));
+    }
+    const db = dbAs(UNLINKED_CAREGIVER);
+    await assertFails(
+      setDoc(doc(db, `invitations/${CODE}`), {
+        caregiverUid: UNLINKED_CAREGIVER,
+        caregiverName: UNLINKED_CAREGIVER,
+        status: "pending",
+        createdAt: serverTimestamp(),
+        expiresAt: fromNow(24 * HOUR),
+      }),
+    );
+    await assertFails(
+      invite(
+        UNLINKED_CAREGIVER,
+        UNLINKED_CAREGIVER,
+        CODE,
+        {},
+        { code: OTHER_CODE },
+      ),
+    );
+  });
+
+  it("only an account with a profile invites", async () => {
+    await assertFails(invite(NO_PROFILE, NO_PROFILE));
+  });
+
+  it("a code that is taken cannot be taken again", async () => {
+    await assertSucceeds(invite(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER));
+    await assertFails(invite(OTHER_PRIMARY, "Otto"));
+  });
+
+  it("a new code waits 30 seconds, and then only the new code can be accepted", async () => {
+    await assertSucceeds(invite(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER));
+    await assertFails(
+      invite(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER, OTHER_CODE),
+    );
+
+    await seedInvitation(
+      UNLINKED_CAREGIVER,
+      UNLINKED_CAREGIVER,
+      CODE,
+      60 * 1000,
+    );
+    await assertSucceeds(
+      invite(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER, OTHER_CODE),
+    );
+    await assertFails(accept(PRIMARY, "Pat"));
+    await assertSucceeds(accept(PRIMARY, "Pat", { code: OTHER_CODE }));
+  });
+});
+
+describe("reading an invitation", () => {
+  it("one code by its name, by someone with a profile, never a list", async () => {
+    await assertSucceeds(invite(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER));
+    await assertSucceeds(getDoc(doc(dbAs(PRIMARY), `invitations/${CODE}`)));
+    await assertSucceeds(
+      getDoc(doc(dbAs(PRIMARY), `invitations/${OTHER_CODE}`)),
+    );
+    await assertFails(
+      getDocs(query(collection(dbAs(PRIMARY), "invitations"), limit(1))),
+    );
+    await assertFails(getDoc(doc(dbAs(NO_PROFILE), `invitations/${CODE}`)));
+    await assertFails(getDoc(doc(anonymousDb(), `invitations/${CODE}`)));
+    await assertFails(
+      getDoc(doc(dbAs(PRIMARY), `invitationOwners/${UNLINKED_CAREGIVER}`)),
+    );
+  });
+});
+
+describe("accepting an invitation", () => {
+  it("creates a view-only link that both people read, and uses the code up", async () => {
+    await invite(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER);
+    await assertSucceeds(accept(PRIMARY, "Pat"));
+    const linkPath = `careLinks/${UNLINKED_CAREGIVER}_${PRIMARY}`;
+    await assertSucceeds(getDoc(doc(dbAs(PRIMARY), linkPath)));
+    await assertSucceeds(getDoc(doc(dbAs(UNLINKED_CAREGIVER), linkPath)));
+    await assertFails(accept(OTHER_PRIMARY, "Otto"));
+  });
+
+  it("refuses more permissions, other names or another state", async () => {
+    await invite(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER);
+    await assertFails(
+      accept(
+        PRIMARY,
+        "Pat",
+        {},
+        { permissions: { ...VIEW_ONLY, manageRoutines: true } },
+      ),
+    );
+    await assertFails(accept(PRIMARY, "Patricia"));
+    await assertFails(
+      accept(PRIMARY, "Pat", { caregiverName: "Someone else" }),
+    );
+    await assertFails(accept(PRIMARY, "Pat", {}, { status: "revoked" }));
+    await assertFails(accept(PRIMARY, "Pat", {}, { createdAt: new Date(0) }));
+    await assertFails(
+      accept(PRIMARY, "Pat", {}, {}, { acceptedBy: OTHER_PRIMARY }),
+    );
+  });
+
+  it("the link and the invitation go together, never one without the other", async () => {
+    await invite(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER);
+    const db = dbAs(PRIMARY);
+    await assertFails(
+      setDoc(
+        doc(db, `careLinks/${UNLINKED_CAREGIVER}_${PRIMARY}`),
+        linkFrom(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER, PRIMARY, "Pat", CODE),
+      ),
+    );
+    await assertFails(
+      updateDoc(doc(db, `invitations/${CODE}`), {
+        status: "accepted",
+        acceptedBy: PRIMARY,
+        acceptedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it("the link is only between the caregiver of the code and the person who accepts", async () => {
+    await invite(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER);
+    // A link for another caregiver, or for someone else, with this code.
+    await assertFails(
+      accept(PRIMARY, "Pat", {
+        caregiverUid: CAREGIVER,
+        caregiverName: CAREGIVER,
+      }),
+    );
+    const db = dbAs(PRIMARY);
+    const batch = writeBatch(db);
+    batch.set(doc(db, `careLinks/${UNLINKED_CAREGIVER}_${OTHER_PRIMARY}`), {
+      ...linkFrom(
+        UNLINKED_CAREGIVER,
+        UNLINKED_CAREGIVER,
+        OTHER_PRIMARY,
+        "Otto",
+        CODE,
+      ),
+    });
+    batch.update(doc(db, `invitations/${CODE}`), {
+      status: "accepted",
+      acceptedBy: PRIMARY,
+      acceptedAt: serverTimestamp(),
+    });
+    await assertFails(batch.commit());
+  });
+
+  it("refuses the caregiver's own code, an expired code and a code already used", async () => {
+    await invite(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER);
+    await assertFails(accept(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER));
+
+    await seedInvitation(
+      UNLINKED_CAREGIVER,
+      UNLINKED_CAREGIVER,
+      CODE,
+      25 * HOUR,
+    );
+    await assertFails(accept(PRIMARY, "Pat"));
+
+    await seedInvitation(
+      UNLINKED_CAREGIVER,
+      UNLINKED_CAREGIVER,
+      CODE,
+      HOUR,
       "accepted",
     );
+    await assertFails(accept(PRIMARY, "Pat"));
   });
 
-  it("repeating an accepted call by the same person is a safe retry", async () => {
-    const { code } = await createInvitation(db, "cara", NOW);
-    const first = await acceptInvitation(db, "pat", code, NOW);
+  it("only accounts with a profile accept, and only from an inviter who still has one", async () => {
+    await invite(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER);
+    await assertFails(accept(NO_PROFILE, NO_PROFILE));
 
-    const retry = await acceptInvitation(db, "pat", code, NOW);
-
-    assert.deepEqual(retry, first);
-  });
-
-  it("a retry does not revive a link that was revoked meanwhile", async () => {
-    const { code } = await createInvitation(db, "cara", NOW);
-    await acceptInvitation(db, "pat", code, NOW);
-    await db
-      .doc("careLinks/cara_pat")
-      .update({ status: "revoked", revokedAt: NOW });
-
-    await assert.rejects(
-      acceptInvitation(db, "pat", code, NOW),
-      expectCode("failed-precondition"),
+    await testEnv().withSecurityRulesDisabled((context) =>
+      deleteDoc(doc(context.firestore(), `users/${UNLINKED_CAREGIVER}`)),
     );
+    await assertFails(accept(PRIMARY, "Pat"));
   });
 
-  it("a code works only once", async () => {
-    const { code } = await createInvitation(db, "cara", NOW);
-    await acceptInvitation(db, "pat", code, NOW);
-
-    await assert.rejects(
-      acceptInvitation(db, "otto", code, NOW),
-      expectCode("failed-precondition"),
-    );
-    assert.equal((await db.doc("careLinks/cara_otto").get()).exists, false);
-  });
-
-  it("rejects unknown and expired codes", async () => {
-    await assert.rejects(
-      acceptInvitation(db, "pat", "ZZZZZZZZ", NOW),
-      expectCode("not-found"),
-    );
-    const { code } = await createInvitation(db, "cara", NOW);
-    await assert.rejects(
-      acceptInvitation(db, "pat", code, ONE_DAY_LATER),
-      expectCode("failed-precondition"),
+  it("does not overwrite an active link", async () => {
+    await invite(CAREGIVER, CAREGIVER);
+    await assertFails(
+      accept(PRIMARY, "Pat", {
+        caregiverUid: CAREGIVER,
+        caregiverName: CAREGIVER,
+      }),
     );
   });
 
-  it("any account with a profile can accept, and only those", async () => {
-    await db.doc("users/carl").set({ displayName: "Carl", createdAt: NOW });
-    const { code } = await createInvitation(db, "cara", NOW);
-
-    await assert.rejects(
-      acceptInvitation(db, "nobody", code, NOW),
-      expectCode("permission-denied"),
+  it("a new code starts an ended link again, with the least privilege", async () => {
+    await invite(REVOKED_CAREGIVER, REVOKED_CAREGIVER);
+    await assertSucceeds(
+      accept(PRIMARY, "Pat", {
+        caregiverUid: REVOKED_CAREGIVER,
+        caregiverName: REVOKED_CAREGIVER,
+      }),
     );
-    assert.equal(
-      (await db.doc(`invitations/${code}`).get()).get("status"),
-      "pending",
+    // A code used before does not start the link again after it ends.
+    await updateDoc(
+      doc(dbAs(PRIMARY), `careLinks/${REVOKED_CAREGIVER}_${PRIMARY}`),
+      {
+        status: "revoked",
+        revokedAt: serverTimestamp(),
+      },
     );
-
-    const accepted = await acceptInvitation(db, "carl", code, NOW);
-    assert.equal(accepted.linkId, "cara_carl");
+    await assertFails(
+      accept(PRIMARY, "Pat", {
+        caregiverUid: REVOKED_CAREGIVER,
+        caregiverName: REVOKED_CAREGIVER,
+      }),
+    );
+    // Not even the link on its own, with the invitation it was accepted with.
+    await assertFails(
+      setDoc(
+        doc(dbAs(PRIMARY), `careLinks/${REVOKED_CAREGIVER}_${PRIMARY}`),
+        linkFrom(REVOKED_CAREGIVER, REVOKED_CAREGIVER, PRIMARY, "Pat", CODE),
+      ),
+    );
   });
+});
 
-  it("does not duplicate an active link", async () => {
-    await acceptInvitation(
-      db,
-      "pat",
-      (await createInvitation(db, "cara", NOW)).code,
-      NOW,
+describe("removing an invitation", () => {
+  it("only the caregiver removes their code and its pointer", async () => {
+    await invite(UNLINKED_CAREGIVER, UNLINKED_CAREGIVER);
+    await assertFails(deleteDoc(doc(dbAs(PRIMARY), `invitations/${CODE}`)));
+    await assertFails(
+      deleteDoc(doc(dbAs(PRIMARY), `invitationOwners/${UNLINKED_CAREGIVER}`)),
     );
-    const second = await createInvitation(db, "cara", NOW);
-
-    await assert.rejects(
-      acceptInvitation(db, "pat", second.code, NOW),
-      expectCode("already-exists"),
-    );
-  });
-
-  it("a new invitation re-creates a revoked link with default permissions", async () => {
-    await acceptInvitation(
-      db,
-      "pat",
-      (await createInvitation(db, "cara", NOW)).code,
-      NOW,
-    );
-    await db.doc("careLinks/cara_pat").update({
-      status: "revoked",
-      revokedAt: NOW,
-      permissions: { viewRoutines: true, manageRoutines: true },
-    });
-
-    await acceptInvitation(
-      db,
-      "pat",
-      (await createInvitation(db, "cara", NOW)).code,
-      NOW,
-    );
-
-    const link = await db.doc("careLinks/cara_pat").get();
-    assert.equal(link.get("status"), "active");
-    assert.equal(link.get("permissions").manageRoutines, false);
-  });
-
-  it("rejects an invitation whose author no longer has a profile", async () => {
-    const { code } = await createInvitation(db, "cara", NOW);
-    await db.doc("users/cara").delete();
-
-    await assert.rejects(
-      acceptInvitation(db, "pat", code, NOW),
-      expectCode("failed-precondition"),
+    const db = dbAs(UNLINKED_CAREGIVER);
+    await assertSucceeds(deleteDoc(doc(db, `invitations/${CODE}`)));
+    await assertSucceeds(
+      deleteDoc(doc(db, `invitationOwners/${UNLINKED_CAREGIVER}`)),
     );
   });
 });

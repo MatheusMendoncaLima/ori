@@ -2,7 +2,6 @@ package com.oriteam.ori.data.firestore
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.firebase.firestore.FirebaseFirestoreException
-import com.google.firebase.functions.FirebaseFunctionsException
 import com.oriteam.ori.data.routine.routineTaskFrom
 import com.oriteam.ori.domain.carelink.CareLinkPermissions
 import com.oriteam.ori.domain.carelink.CareLinkStatus
@@ -81,18 +80,8 @@ class FirestoreSchemaTest {
     fun `permission errors are never reported as other failures`() {
         assertEquals(DataError.PERMISSION_DENIED, dataErrorFor(FirebaseFirestoreException.Code.PERMISSION_DENIED))
         assertEquals(DataError.NETWORK_UNAVAILABLE, dataErrorFor(FirebaseFirestoreException.Code.UNAVAILABLE))
-        assertEquals(DataError.CONFLICT, dataErrorFor(FirebaseFunctionsException.Code.ALREADY_EXISTS))
-        assertEquals(DataError.PRECONDITION_FAILED, dataErrorFor(FirebaseFunctionsException.Code.FAILED_PRECONDITION))
+        assertEquals(DataError.CONFLICT, dataErrorFor(FirebaseFirestoreException.Code.ALREADY_EXISTS))
+        assertEquals(DataError.PRECONDITION_FAILED, dataErrorFor(FirebaseFirestoreException.Code.FAILED_PRECONDITION))
         assertEquals(DataError.UNKNOWN, dataErrorFor(FirebaseFirestoreException.Code.INTERNAL))
-    }
-
-    @Test
-    fun `an unknown invitation code is not found, but a missing server function is a service error`() {
-        val notFound = FirebaseFunctionsException.Code.NOT_FOUND
-
-        assertEquals(DataError.NOT_FOUND, dataErrorFor(notFound, SERVER_NOT_FOUND_MESSAGE))
-        assertEquals(DataError.SERVICE_UNAVAILABLE, dataErrorFor(notFound, "NOT_FOUND"))
-        assertEquals(DataError.SERVICE_UNAVAILABLE, dataErrorFor(notFound, null))
-        assertEquals(DataError.CONFLICT, dataErrorFor(FirebaseFunctionsException.Code.ALREADY_EXISTS, "Link"))
     }
 }

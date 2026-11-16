@@ -235,13 +235,4 @@ describe("care links", () => {
       updateDoc(linkRef, { status: "revoked", revokedAt: serverTimestamp() }),
     );
   });
-
-  it("invitations are never readable or writable by clients", async () => {
-    await assertFails(getDoc(doc(dbAs(CAREGIVER), "invitations/ABCDEFGH")));
-    await assertFails(
-      setDoc(doc(dbAs(CAREGIVER), "invitations/ZZZZZZZZ"), {
-        caregiverUid: CAREGIVER,
-      }),
-    );
-  });
 });

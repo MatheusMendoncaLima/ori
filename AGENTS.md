@@ -17,7 +17,7 @@ Arquivos de instrução específicos complementam este contrato sem repeti-lo:
 |---|---|---|
 | `android/` | App Android (Kotlin, Jetpack Compose, Hilt, Firebase Auth) | `./gradlew detekt testDevDebugUnitTest lintProdDebug assembleDevDebug assembleProdDebug` |
 | `functions/` | Projeto Firebase: `firebase.json`, `firestore.rules`, `firestore.indexes.json` | — |
-| `functions/functions/` | Cloud Functions (TypeScript): convites e vínculos | `npm run lint && npm run build` |
+| `functions/functions/` | Cloud Functions (TypeScript) de convite, guardadas para o plano Blaze: o app faz os convites pelas regras | `npm run lint && npm run build` |
 | `functions/security-tests/` | Testes das regras e das funções no emulador | `npm run format:check && npm test` |
 | `web/` | Next.js, ainda o template inicial | `npm run format:check && npm run lint && npm run build` |
 | `docs/` | Documentação em português | — |
@@ -83,7 +83,7 @@ Arquivos de instrução específicos complementam este contrato sem repeti-lo:
 |---|---|---|
 | Regras do Firestore | `firebase deploy --only firestore:rules --project oriteam-ori` | Só com os testes do emulador passando |
 | Índices | `firebase deploy --only firestore:indexes --project oriteam-ori` | Um índice leva alguns minutos para ficar pronto |
-| Cloud Functions | `firebase deploy --only functions --project oriteam-ori` | Ainda não publicadas: exigem o plano Blaze |
+| Cloud Functions | `firebase deploy --only functions --project oriteam-ori` | Não publicadas nem usadas pelo app: exigem o plano Blaze |
 
 Publicar é uma ação externa: só faça quando a pessoa responsável pediu ou autorizou.
 

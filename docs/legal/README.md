@@ -48,10 +48,10 @@ precisa ser feito a cada mudança. A regra permanente está no [AGENTS.md](../..
    remove os vínculos (que guardam nomes); apaga o consentimento e o perfil; por último, o login.
 4. Sem conexão, para em 60 segundos e avisa; o que já foi enviado continua.
 
-**Limite conhecido:** os códigos de convite ficam no servidor (só as Cloud Functions mexem neles) e não são apagados
-pela conta; valem 24 horas e guardam o identificador e o nome de quem os criou. Apagá-los automaticamente pede
-uma política de TTL no Firestore (item S2 da revisão). Hoje as funções de convite não estão publicadas, então nenhum
-convite é criado.
+**Convites:** um código guarda o identificador e o nome de quem o criou e vale 24 horas. Cada pessoa tem no máximo
+um código em uso (um código novo apaga o anterior), e apagar a conta apaga esse código e o ponteiro para ele
+(`invitationOwners`); a exportação o inclui. **Limite:** um código já usado ou vencido fica no banco até a política de
+TTL do Firestore no campo `expiresAt` ser ligada no console (item S2 da revisão).
 
 ## Plano para incidentes (J6, LGPD art. 48)
 

@@ -11,7 +11,7 @@ import com.oriteam.ori.data.account.ContentResolverFileWriter
 import com.oriteam.ori.data.account.FirestoreAccountDeletion
 import com.oriteam.ori.data.account.RoutedAccountDataExporter
 import com.oriteam.ori.data.carelink.FirestoreCareLinkRepository
-import com.oriteam.ori.data.carelink.FunctionsInvitationRepository
+import com.oriteam.ori.data.carelink.FirestoreInvitationRepository
 import com.oriteam.ori.data.launcher.AndroidHomeActivation
 import com.oriteam.ori.data.launcher.AndroidHomeSystem
 import com.oriteam.ori.data.launcher.AndroidInstalledApps
@@ -104,7 +104,7 @@ abstract class DataModule {
 
     @Binds
     @Singleton
-    abstract fun bindInvitationRepository(implementation: FunctionsInvitationRepository): InvitationRepository
+    abstract fun bindInvitationRepository(implementation: FirestoreInvitationRepository): InvitationRepository
 
     @Binds
     @Singleton

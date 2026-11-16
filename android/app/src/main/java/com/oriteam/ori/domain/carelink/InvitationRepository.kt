@@ -6,8 +6,9 @@ import com.oriteam.ori.domain.common.DataResult
 data class CareInvitation(val code: String, val expiresAtMillis: Long)
 
 /**
- * Invitations run on the server (Cloud Functions), because creating a care link grants access
- * to another person's data and must not be decided by the client.
+ * A caregiver makes a code; the person to be supported types it and the link is created. Creating a link grants
+ * access to another person's data, so `functions/firestore.rules` checks every step: a real author, a 24-hour code
+ * used once, no self link, and a link born with only "see the routine". Online only: a link must be confirmed.
  */
 interface InvitationRepository {
     suspend fun createInvitation(): DataResult<CareInvitation>
