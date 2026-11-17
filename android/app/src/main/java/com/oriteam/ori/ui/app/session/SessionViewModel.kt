@@ -144,12 +144,20 @@ class SessionViewModel @Inject constructor(
         }
     }
 
-    /** Erases everything the person created without an account and goes back to the welcome. */
-    fun eraseLocalData() {
+    /**
+     * Erases everything the person created without an account and goes back to the welcome. [onResult] receives the
+     * failure, when the database could not erase (everything stays, and the screen says so), or null.
+     */
+    fun eraseLocalData(onResult: (DataError?) -> Unit = {}) {
         viewModelScope.launch {
-            localData.eraseAll()
-            profilePhotos.removePhoto(LOCAL_OWNER_UID)
-            deviceProfiles.clearLocalProfile()
+            when (val erased = localData.eraseAll()) {
+                is DataResult.Failure -> onResult(erased.error)
+                is DataResult.Success -> {
+                    profilePhotos.removePhoto(LOCAL_OWNER_UID)
+                    deviceProfiles.clearLocalProfile()
+                    onResult(null)
+                }
+            }
         }
     }
 

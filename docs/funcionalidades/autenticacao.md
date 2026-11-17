@@ -106,7 +106,7 @@ Não há verificação de **autorização** neste módulo: ele apenas autentica.
 | E-mail já usado no cadastro | "Este e-mail já está em uso" |
 | Sem internet | "Sem conexão. Verifique sua internet e tente novamente" |
 | Muitas tentativas | "Muitas tentativas. Aguarde um pouco e tente novamente" |
-| Conta criada, mas o nome não foi salvo | "Sua conta foi criada, mas não foi possível salvar seu nome" |
+| Conta criada, mas o nome do Firebase Auth não foi salvo | Nada: o cadastro segue, porque o app usa o nome do perfil (R13, 15/11/2026); a falha vai para o log, sem o nome |
 | Qualquer outra falha | "Algo deu errado. Tente novamente" |
 
 Na recuperação de senha, um e-mail sem conta recebe a mesma resposta de sucesso

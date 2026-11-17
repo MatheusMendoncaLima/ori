@@ -56,16 +56,18 @@ class FirebaseAuthRepository @Inject constructor(
         }
     }
 
+    /**
+     * The name in Firebase Auth only fills "Complete seu perfil"; the app shows the name of the profile in Firestore.
+     * So a failure here is logged (without the name) and the sign-up goes on: the account exists and is signed in,
+     * and showing an error made the person think it had not been created (R13).
+     */
     private suspend fun updateDisplayName(user: FirebaseUser, name: String): AuthResult {
         val profileUpdate = runAuthOperation {
             val request = UserProfileChangeRequest.Builder().setDisplayName(name).build()
             user.updateProfile(request).await()
         }
-        return if (profileUpdate is AuthResult.Failure) {
-            AuthResult.Failure(AuthError.PROFILE_UPDATE_FAILED)
-        } else {
-            AuthResult.Success
-        }
+        if (profileUpdate is AuthResult.Failure) Log.w(TAG, "Display name not saved: ${profileUpdate.error}")
+        return AuthResult.Success
     }
 
     override suspend fun sendPasswordResetEmail(email: String): AuthResult {

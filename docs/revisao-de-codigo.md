@@ -62,24 +62,6 @@ As regras negam por padrão, e cada coleção tem dono e limites.
   - As frases salvas da conta são lidas por `observeSavedMessages().first()`, que não diz se a resposta veio do cache, ao contrário da leitura das pranchas.
 - **Correção:** usar a mesma comparação do formulário (`isDuplicateOf`); ler as frases com uma leitura que informe a origem.
 
-### R12. Falhas do banco local que não aparecem (baixa)
-
-- **Onde:**
-  - `ui/app/session/SessionViewModel.kt:131` (`eraseLocalData`);
-  - `data/local/RoomLocalDataStore.kt:61` (`countBetween`).
-- **O que acontece:**
-  - Apagar os dados do aparelho não passa por `runLocalWrite`: um erro do banco fecharia o app.
-  - A contagem de comunicação devolve 0 quando falha, e o relatório mostra "0 vezes" como se fosse verdade.
-- **Correção:** usar `runLocalWrite` e mostrar a falha; devolver `DataResult` na contagem.
-
-### R13. O cadastro falha por causa de um nome que o app não usa (baixa)
-
-- **Onde:** `data/auth/FirebaseAuthRepository.kt:58`.
-- **O que acontece:**
-  - Depois de criar a conta, o app grava o nome também no Firebase Auth. Se só isso falhar, o cadastro inteiro aparece como erro, mas a conta já existe e está conectada.
-  - O app usa o nome do perfil no Firestore. O do Auth só preenche "Complete seu perfil".
-- **Correção:** não tratar essa falha como erro do cadastro (registrar no log e seguir).
-
 ### R14. Criar duas vezes com o mesmo id só funciona enquanto a primeira gravação está pendente (baixa)
 
 - **Onde:**
@@ -327,7 +309,7 @@ Ficaram dois, que mudam dados guardados ou a arquitetura e pedem uma decisão an
 - **Não verificado:** no aparelho.
 - **Limitação:** os documentos desses dias continuam no banco. Ocupam pouco, mas contam no limite de 100 atividades por dia.
 
-### R5, R6 e R7. Vínculo e comunicação — corrigidas em 15/11/2026
+### R5, R6, R7, R12 e R13 — corrigidas em 15/11/2026
 
 As regras de R5 e R6 foram publicadas no `oriteam-ori` em 15/11/2026.
 
@@ -336,6 +318,8 @@ As regras de R5 e R6 foram publicadas no `oriteam-ori` em 15/11/2026.
 | R5 | Ao excluir "todos os dias" de uma série, um dia marcado por quem acompanha (autor do documento do dia) não podia ser apagado pela dona: a série sumia e a tela mostrava erro | Regra `isDayOfOwnSeries`: a dona apaga o dia de uma série dela, enquanto a série existe. O app apaga o dia **antes** da série; se o dia for recusado, a série fica | `routine.test.mjs` ("the owner removes a day a caregiver marked…", falha sem a regra e sem a conferência do autor da série); `RepeatingRoutineRepositoryTest` ("deleting all days removes the day's document before the series…", falha com a ordem antiga) |
 | R6 | Quem acompanha apagava símbolos, mas as fotos deles ficavam na conta da pessoa, contando no limite de 100 | Quem tem `manageCommunication` apaga fotos de símbolos (nunca a do perfil), e o app apaga a foto junto com o símbolo ou a prancha | `photos.test.mjs` (apaga a do símbolo, não a do perfil; sem permissão, não apaga); `AacOrganizeViewModelTest` ("a caregiver with permission removes the photo of a symbol they delete…") |
 | R7 | Sem conexão, apagar uma prancha lia os símbolos do cache e podia deixar no servidor os que este aparelho nunca leu | A lista dos símbolos vem do servidor (`Source.SERVER`); sem conexão, a exclusão para com "Sem conexão" | Sem teste automático: depende do Firestore real. Conferido no código |
+| R12 | Apagar os dados do aparelho não passava por `runLocalWrite` (um erro do banco fechava o app), e a contagem da comunicação devolvia 0 quando falhava | `eraseAll` e `countBetween` devolvem `DataResult`; a tela de Privacidade mostra o erro e nada é apagado; o relatório mostra erro em vez de "0 vezes" | `SessionViewModelTest` ("a failed erase keeps the person here…"), `ReportsViewModelTest` ("a communication count that cannot be read is an error, never zero times") |
+| R13 | Se só o nome do Firebase Auth falhasse, o cadastro aparecia como erro, embora a conta existisse e estivesse conectada | A falha vai para o log (sem o nome) e o cadastro segue; o nome que o app mostra é o do perfil no Firestore | Sem teste automático: depende do Firebase Auth real. Conferido no código |
 
 ### Desempenho das animações (M1, M3–M6, M8, M9, M11–M13) — corrigidas em 07/11/2026
 

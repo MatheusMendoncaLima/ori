@@ -9,7 +9,7 @@ data class ProfileActions(
     val localDataMove: LocalDataMoveResult?,
     val onRetryLocalDataMove: () -> Unit,
     val onSignOut: () -> Unit,
-    val onEraseLocalData: () -> Unit,
+    val onEraseLocalData: (onResult: (DataError?) -> Unit) -> Unit,
     val onRename: (name: String, onResult: (DataError?) -> Unit) -> Unit,
     val photoPath: String? = null,
     @StringRes val photoErrorRes: Int? = null,

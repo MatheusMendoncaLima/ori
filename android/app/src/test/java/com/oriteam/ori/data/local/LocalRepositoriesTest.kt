@@ -183,8 +183,8 @@ class LocalRepositoriesTest {
         usage.recordCommunication(day)
         usage.recordCommunication(day.plusDays(5))
 
-        assertEquals(2, usage.countBetween(day, day.plusDays(1)))
-        assertEquals(3, usage.countBetween(day, day.plusDays(5)))
+        assertEquals(DataResult.Success(2), usage.countBetween(day, day.plusDays(1)))
+        assertEquals(DataResult.Success(3), usage.countBetween(day, day.plusDays(5)))
     }
 
     @Test

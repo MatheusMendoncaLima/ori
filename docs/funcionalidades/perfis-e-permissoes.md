@@ -267,3 +267,31 @@ dia depois da data, sem custo no plano gratuito.
 Enquanto os convites dependiam das Cloud Functions não publicadas, "Gerar código de convite" mostrava "Código não
 encontrado". Em 09/11/2026 o app passou a dizer "Este serviço ainda não está disponível". Desde 15/11/2026 os convites
 não usam funções (seção 5), e essa mensagem saiu do app.
+
+## Teste com duas contas no projeto real (15/11/2026)
+
+Feito com o build `profiling` no celular (SM-S911B, em português) e no tablet (SM-X610, em inglês), cada um com uma
+conta própria, no projeto `oriteam-ori`, com as regras publicadas no mesmo dia.
+
+| Passo | Resultado |
+|---|---|
+| Celular gera o código em "Acompanhados" | Funcionou: "YYGN98UL", "Válido até 16/11/2026 22:56". Antes dos convites sem Cloud Functions, este passo falhava |
+| Tablet digita o código em "Linked caregivers" | "Done! You are now linked with Matheus Mendonça", com "View only" |
+| Celular, sem tocar em nada | A pessoa apareceu em "Acompanhados", "Somente visualização", na hora |
+| Tablet liga "manage my routine" | O botão "Adicionar atividade" apareceu na rotina da pessoa, no celular |
+| Celular cria uma atividade na rotina da pessoa | Apareceu no tablet com "Set by the caregiver" |
+| Tablet marca a atividade como feita | O ✓ apareceu no celular |
+| Celular exclui a atividade (com confirmação) | Sumiu também do tablet |
+| Tablet encerra o vínculo (com confirmação), com a rotina da pessoa aberta no celular | O celular mostrou "Vínculo encerrado — Você não tem mais acesso à rotina desta pessoa" na hora; a lista do tablet ficou vazia |
+
+**Não conferido ainda:** a permissão da comunicação (pranchas), uma atividade oculta e reaceitar depois de encerrar.
+A atividade de teste foi apagada e o vínculo foi encerrado: as duas contas terminaram como começaram.
+
+**Achados no teste:**
+
+- Depois de aceito, o código continua na tela de quem convidou, como se ainda valesse. Esconder o código quando a
+  pessoa aparece na lista.
+- Depois de encerrar, o tablet ainda mostrava "Done! You are now linked with…" do aceite anterior. A mensagem de
+  sucesso deveria sumir quando a lista muda.
+- O texto de "Acompanhados" vazio diz "Gere um código de convite em Conta"; a área se chama "Perfil", e o botão está
+  na mesma tela.

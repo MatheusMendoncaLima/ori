@@ -67,6 +67,17 @@ class ReportsViewModelTest {
     }
 
     @Test
+    fun `a communication count that cannot be read is an error, never zero times`() = runTest {
+        routine.dayResult = DataResult.Success(listOf(activity("a", isDone = true)))
+        usage.countFailure = DataError.UNKNOWN
+
+        viewModel.show(OWNER)
+
+        // R12: the report said "0 times" as if it were true.
+        assertTrue(viewModel.uiState.value.report is ContentState.Error)
+    }
+
+    @Test
     fun `changing the period reads its days, and choosing the same one reads nothing`() = runTest {
         routine.dayResult = DataResult.Success(listOf(activity("a", isDone = true)))
         viewModel.show(OWNER)

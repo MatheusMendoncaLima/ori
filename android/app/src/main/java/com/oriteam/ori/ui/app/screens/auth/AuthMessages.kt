@@ -15,7 +15,6 @@ fun AuthError.messageRes(): Int = when (this) {
     AuthError.USER_DISABLED -> R.string.error_user_disabled
     AuthError.TOO_MANY_REQUESTS -> R.string.error_too_many_requests
     AuthError.NETWORK_UNAVAILABLE -> R.string.error_network_unavailable
-    AuthError.PROFILE_UPDATE_FAILED -> R.string.error_profile_update_failed
     AuthError.UNKNOWN -> R.string.error_unknown
 }
 

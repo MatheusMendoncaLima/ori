@@ -13,7 +13,6 @@
     <string name="error_user_disabled">Esta cuenta está desactivada</string>
     <string name="error_too_many_requests">Demasiados intentos. Espera un poco y vuelve a intentarlo</string>
     <string name="error_network_unavailable">Sin conexión. Revisa tu internet y vuelve a intentarlo</string>
-    <string name="error_profile_update_failed">Tu cuenta se creó, pero no se pudo guardar tu nombre</string>
     <string name="error_unknown">Algo salió mal. Vuelve a intentarlo</string>
     <!-- Shared actions and states -->
     <string name="action_back">Volver</string>

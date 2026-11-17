@@ -44,6 +44,7 @@ Arquivos de instrução específicos complementam este contrato sem repeti-lo:
 | Plano de mudanças do ORI Home (girar como o One UI, correções) | [docs/funcionalidades/launcher-plano.md](docs/funcionalidades/launcher-plano.md) |
 | Idiomas: como o app escolhe o idioma das datas e da voz, e como traduzir | [docs/idiomas.md](docs/idiomas.md) |
 | Falhas e gambiarras conhecidas, ainda não corrigidas | [docs/revisao-de-codigo.md](docs/revisao-de-codigo.md) |
+| O que foi feito e o que falta para finalizar (defeitos, modo foco, notificações, alto contraste, ideias) | [docs/plano-de-finalizacao.md](docs/plano-de-finalizacao.md) |
 | Teste geral no tablet: erros, pontos de melhora e design duvidoso (12/11/2026); desempenho medido e design (13/11/2026); tempo para abrir cada tela (13/11/2026) | [docs/teste-geral.md](docs/teste-geral.md) |
 | Revisões anteriores (histórico de decisões) | [docs/revisao-estrutura-e-design.md](docs/revisao-estrutura-e-design.md), [docs/revisao-de-design.md](docs/revisao-de-design.md) |
 

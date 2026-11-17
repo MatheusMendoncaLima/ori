@@ -21,7 +21,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.oriteam.ori.R
+import com.oriteam.ori.domain.common.DataError
 import com.oriteam.ori.ui.adaptive.CenteredContent
+import com.oriteam.ori.ui.app.screens.common.messageRes
 import com.oriteam.ori.ui.components.card.OriCard
 import com.oriteam.ori.ui.components.dialog.OriConfirmationDialog
 import com.oriteam.ori.ui.components.form.FormMessage
@@ -44,13 +46,14 @@ private const val EXPORT_FILE_NAME = "ori-my-data.json"
 fun PrivacyScreen(
     ownerUid: String,
     isLocal: Boolean,
-    onEraseLocalData: () -> Unit,
+    onEraseLocalData: (onResult: (DataError?) -> Unit) -> Unit,
     onNavigateBack: () -> Unit,
     viewModel: PrivacyViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
     var isConfirmingErase by rememberSaveable { mutableStateOf(false) }
+    var eraseErrorRes by rememberSaveable { mutableStateOf<Int?>(null) }
     val saveAs = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         viewModel.onExportTo(ownerUid, uri?.toString())
     }
@@ -91,6 +94,7 @@ fun PrivacyScreen(
                     color = LocalOriColors.current.errorText,
                     enabled = !state.isDeleting
                 )
+                FormMessage(messageRes = eraseErrorRes, type = FormMessageType.ERROR)
                 Spacer(modifier = Modifier.height(OriSpacing.Large))
             }
         }
@@ -102,7 +106,11 @@ fun PrivacyScreen(
             // The same verb as the button that asked: "Apagar", not the "Excluir" of the boards.
             confirmLabel = stringResource(R.string.privacy_erase_confirm),
             dismissLabel = stringResource(R.string.action_cancel),
-            onConfirm = onEraseLocalData,
+            onConfirm = {
+                isConfirmingErase = false
+                eraseErrorRes = null
+                onEraseLocalData { error -> eraseErrorRes = error?.messageRes() }
+            },
             onDismiss = { isConfirmingErase = false },
             isDestructive = true
         )

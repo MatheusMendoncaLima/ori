@@ -3,6 +3,7 @@ package com.oriteam.ori.ui.app.screens.reports
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.oriteam.ori.domain.aac.AacUsageRepository
+import com.oriteam.ori.domain.common.DataError
 import com.oriteam.ori.domain.common.DataResult
 import com.oriteam.ori.domain.reports.ReportPeriod
 import com.oriteam.ori.domain.reports.RoutineReport
@@ -77,15 +78,18 @@ class ReportsViewModel @Inject constructor(
         }
     }
 
+    /** Either read failing is an error of the whole report: a part of it shown as zero would not be true. */
     private suspend fun reportFor(owner: String, days: List<LocalDate>): ContentState<RoutineReport> {
-        val results = when (val read = routine.getDays(owner, RoutineViewer.Owner, days)) {
-            is DataResult.Failure -> return ContentState.Error(read.error.messageRes())
-            is DataResult.Success -> read.value
+        val read = routine.getDays(owner, RoutineViewer.Owner, days)
+        val count = if (read is DataResult.Success) usage.countBetween(days.first(), days.last()) else null
+        return when {
+            read is DataResult.Failure -> ContentState.Error(read.error.messageRes())
+            count is DataResult.Failure -> ContentState.Error(count.error.messageRes())
+            read is DataResult.Success && count is DataResult.Success -> {
+                val report = RoutineReport(days.map { dayResultOf(it, read.value[it].orEmpty()) }, count.value)
+                if (report.isEmpty) ContentState.Empty else ContentState.Content(report)
+            }
+            else -> ContentState.Error(DataError.UNKNOWN.messageRes())
         }
-        val report = RoutineReport(
-            days = days.map { day -> dayResultOf(day, results[day].orEmpty()) },
-            speechCount = usage.countBetween(days.first(), days.last())
-        )
-        return if (report.isEmpty) ContentState.Empty else ContentState.Content(report)
     }
 }

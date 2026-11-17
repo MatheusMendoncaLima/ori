@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.oriteam.ori.BuildConfig
 import com.oriteam.ori.R
+import com.oriteam.ori.domain.common.DataError
 import com.oriteam.ori.ui.adaptive.CenteredContent
 import com.oriteam.ori.ui.app.screens.legal.AboutScreen
 import com.oriteam.ori.ui.app.screens.legal.PrivacyScreen
@@ -35,7 +36,12 @@ private enum class SettingsPane { ACCESSIBILITY, THEME, COMMUNICATION, SCREEN, H
 
 /** "Configurações": a short menu, each row one small screen, so no option needs a long search. */
 @Composable
-fun SettingsRoute(ownerUid: String, isLocal: Boolean, onEraseLocalData: () -> Unit, onNavigateBack: () -> Unit) {
+fun SettingsRoute(
+    ownerUid: String,
+    isLocal: Boolean,
+    onEraseLocalData: (onResult: (DataError?) -> Unit) -> Unit,
+    onNavigateBack: () -> Unit
+) {
     val subscreen = rememberOpenSubscreen<SettingsPane>()
     val back = subscreen::close
     SubscreenHost(subscreen) { current ->

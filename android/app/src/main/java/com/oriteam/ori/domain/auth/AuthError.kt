@@ -15,8 +15,5 @@ enum class AuthError {
     USER_DISABLED,
     TOO_MANY_REQUESTS,
     NETWORK_UNAVAILABLE,
-
-    /** The account was created, but the display name could not be saved. */
-    PROFILE_UPDATE_FAILED,
     UNKNOWN
 }

@@ -3,6 +3,8 @@ package com.oriteam.ori.domain.local
 import com.oriteam.ori.domain.aac.AacBoard
 import com.oriteam.ori.domain.aac.AacSymbol
 import com.oriteam.ori.domain.aac.SavedMessage
+import com.oriteam.ori.domain.common.DataResult
+import com.oriteam.ori.domain.common.WriteStatus
 import com.oriteam.ori.domain.routine.RoutineSeries
 import com.oriteam.ori.domain.routine.RoutineTask
 
@@ -33,6 +35,6 @@ interface LocalDataStore {
 
     suspend fun removeSavedMessage(id: String)
 
-    /** The person asked to erase what is on this device. */
-    suspend fun eraseAll()
+    /** The person asked to erase what is on this device. A failure keeps everything, and is said (R12). */
+    suspend fun eraseAll(): DataResult<WriteStatus>
 }

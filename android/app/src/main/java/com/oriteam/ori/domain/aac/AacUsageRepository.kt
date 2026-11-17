@@ -1,5 +1,6 @@
 package com.oriteam.ori.domain.aac
 
+import com.oriteam.ori.domain.common.DataResult
 import java.time.LocalDate
 
 /**
@@ -13,5 +14,6 @@ import java.time.LocalDate
 interface AacUsageRepository {
     suspend fun recordCommunication(date: LocalDate)
 
-    suspend fun countBetween(start: LocalDate, end: LocalDate): Int
+    /** A count that cannot be read is a failure, never "0 times" (R12). */
+    suspend fun countBetween(start: LocalDate, end: LocalDate): DataResult<Int>
 }

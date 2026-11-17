@@ -13,7 +13,6 @@
     <string name="error_user_disabled">This account is disabled</string>
     <string name="error_too_many_requests">Too many attempts. Wait a little and try again</string>
     <string name="error_network_unavailable">No connection. Check your internet and try again</string>
-    <string name="error_profile_update_failed">Your account was created, but your name could not be saved</string>
     <string name="error_unknown">Something went wrong. Try again</string>
     <!-- Shared actions and states -->
     <string name="action_back">Back</string>

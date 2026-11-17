@@ -1,6 +1,9 @@
 package com.oriteam.ori.testing
 
 import com.oriteam.ori.domain.aac.AacUsageRepository
+import com.oriteam.ori.domain.common.DataError
+import com.oriteam.ori.domain.common.DataResult
+import com.oriteam.ori.domain.common.WriteStatus
 import com.oriteam.ori.domain.local.LocalDataSnapshot
 import com.oriteam.ori.domain.local.LocalDataStore
 import com.oriteam.ori.domain.photos.PhotoImportError
@@ -70,9 +73,13 @@ class FakeLocalDataStore(var data: LocalDataSnapshot = LocalDataSnapshot()) : Lo
         data = data.copy(savedMessages = data.savedMessages.filterNot { it.id == id })
     }
 
-    override suspend fun eraseAll() {
+    var eraseResult: DataResult<WriteStatus> = DataResult.Success(WriteStatus.SYNCED)
+
+    override suspend fun eraseAll(): DataResult<WriteStatus> {
+        if (eraseResult is DataResult.Failure) return eraseResult
         wasErased = true
         data = LocalDataSnapshot()
+        return eraseResult
     }
 }
 
@@ -83,8 +90,11 @@ class FakeAacUsageRepository : AacUsageRepository {
         recorded += date
     }
 
-    override suspend fun countBetween(start: LocalDate, end: LocalDate): Int =
-        recorded.count { !it.isBefore(start) && !it.isAfter(end) }
+    var countFailure: DataError? = null
+
+    override suspend fun countBetween(start: LocalDate, end: LocalDate): DataResult<Int> =
+        countFailure?.let { DataResult.Failure(it) }
+            ?: DataResult.Success(recorded.count { !it.isBefore(start) && !it.isAfter(end) })
 }
 
 class FakeProfilePhotoStore : ProfilePhotoStore {

@@ -3,7 +3,6 @@ package com.oriteam.ori.data.local
 import androidx.room.withTransaction
 import com.oriteam.ori.domain.aac.AacUsageRepository
 import com.oriteam.ori.domain.aac.MAX_SYMBOLS_PER_BOARD
-import com.oriteam.ori.domain.common.DataResult
 import com.oriteam.ori.domain.local.LocalBoard
 import com.oriteam.ori.domain.local.LocalDataSnapshot
 import com.oriteam.ori.domain.local.LocalDataStore
@@ -40,7 +39,7 @@ class RoomLocalDataStore @Inject constructor(private val database: OriDatabase) 
 
     override suspend fun removeSavedMessage(id: String) = messages.delete(id)
 
-    override suspend fun eraseAll() {
+    override suspend fun eraseAll() = runLocalWrite {
         database.withTransaction {
             routine.deleteAll()
             series.deleteAll()
@@ -58,9 +57,6 @@ class RoomAacUsageRepository @Inject constructor(database: OriDatabase) : AacUsa
         runLocalRead { dao.record(date.toString()) }
     }
 
-    /** A failed read counts nothing: the count is a summary, and the report shows the rest of the data anyway. */
-    override suspend fun countBetween(start: LocalDate, end: LocalDate): Int {
-        val result = runLocalRead { dao.countBetween(start.toString(), end.toString()) }
-        return (result as? DataResult.Success)?.value ?: 0
-    }
+    override suspend fun countBetween(start: LocalDate, end: LocalDate) =
+        runLocalRead { dao.countBetween(start.toString(), end.toString()) }
 }

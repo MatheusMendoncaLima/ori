@@ -2,6 +2,7 @@ package com.oriteam.ori.ui.app.session
 
 import com.oriteam.ori.domain.auth.AuthenticatedUser
 import com.oriteam.ori.domain.common.DataError
+import com.oriteam.ori.domain.common.DataResult
 import com.oriteam.ori.domain.local.MoveLocalDataToAccount
 import com.oriteam.ori.domain.profile.LOCAL_OWNER_UID
 import com.oriteam.ori.domain.profile.ProfileLookup
@@ -23,6 +24,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -208,6 +210,20 @@ class SessionViewModelTest {
 
         assertEquals(true, localData.wasErased)
         assertEquals(SessionState.SignedOut, viewModel.state.value)
+    }
+
+    @Test
+    fun `a failed erase keeps the person here and says why, instead of closing the app`() = runTest {
+        deviceProfiles.startLocalProfile()
+        val viewModel = observedViewModel()
+        localData.eraseResult = DataResult.Failure(DataError.UNKNOWN)
+        var failure: DataError? = null
+
+        viewModel.eraseLocalData { failure = it }
+
+        // R12: the erase did not pass through runLocalWrite, and a database error closed the app.
+        assertEquals(DataError.UNKNOWN, failure)
+        assertTrue(viewModel.state.value is SessionState.Active)
     }
 
     @Test
